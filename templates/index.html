@@ -195,6 +195,7 @@
   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
     <span id="last-updated">Aguardando dados…</span>
     <span id="refresh-badge">🔄 Atualiza a cada {{ check_interval }}s</span>
+    <button id="add-site-btn" style="background:#0b1220;border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;cursor:pointer">➕ Adicionar site</button>
   </div>
 </header>
 
@@ -226,6 +227,22 @@
     <!-- cards rendered by JS -->
   </div>
 </main>
+
+<!-- Modal de adicionar/editar site -->
+<div id="site-modal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:1000;">
+  <div style="background:var(--surface);padding:18px;border-radius:10px;border:1px solid var(--border);width:420px;">
+    <h3 id="modal-title" style="margin-bottom:8px">Adicionar site</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <input id="site-name" placeholder="Nome do site" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text)" />
+      <input id="site-url" placeholder="https://exemplo.com" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text)" />
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+        <button id="modal-cancel" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted)">Cancelar</button>
+        <button id="modal-submit" style="padding:8px 12px;border-radius:6px;border:1px solid var(--blue);background:var(--blue);color:#07202c">Adicionar</button>
+      </div>
+      <div id="modal-feedback" style="color:var(--red);font-size:.9rem;display:none"></div>
+    </div>
+  </div>
+</div>
 
 <script>
   const REFRESH_MS = {{ check_interval }} * 1000;
@@ -272,8 +289,10 @@
     return `
       <div class="site-card status-${st}" id="card-${site.name.replace(/\s/g,'_')}">
         <div class="card-header">
-          <span class="site-name">
-            <span class="pulse-dot ${dotCls}"></span>${site.name}
+          <span style="display:flex;align-items:center;gap:12px">
+            <span class="site-name"><span class="pulse-dot ${dotCls}"></span>${site.name}</span>
+            <button onclick="openEditModal('${site.name.replace(/'/g,"\\'")}')" style="background:transparent;border:0;color:var(--muted);cursor:pointer">✏️</button>
+            <button onclick="deleteSite('${site.name.replace(/'/g,"\\'")}')" style="background:transparent;border:0;color:var(--muted);cursor:pointer">🗑️</button>
           </span>
           <span class="badge badge-${st}">${st}</span>
         </div>
@@ -308,6 +327,56 @@
     } catch (_) {}
   }
 
+  // Modal / CRUD functions
+  function showModal(title, submitLabel, name = '', url = '', onSubmit=null) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('site-name').value = name;
+    document.getElementById('site-url').value = url;
+    document.getElementById('modal-submit').textContent = submitLabel;
+    document.getElementById('modal-feedback').style.display = 'none';
+    document.getElementById('site-modal').style.display = 'flex';
+    const submit = async () => {
+      const n = document.getElementById('site-name').value.trim();
+      const u = document.getElementById('site-url').value.trim();
+      if (!n || !u) {
+        const fb = document.getElementById('modal-feedback'); fb.textContent = 'Nome e URL são obrigatórios'; fb.style.display = 'block'; return;
+      }
+      try {
+        await onSubmit(n,u);
+        document.getElementById('site-modal').style.display = 'none';
+        refresh();
+      } catch (err) {
+        const fb = document.getElementById('modal-feedback'); fb.textContent = err.message || 'Erro'; fb.style.display = 'block';
+      }
+    };
+    document.getElementById('modal-submit').onclick = submit;
+    document.getElementById('modal-cancel').onclick = () => { document.getElementById('site-modal').style.display = 'none'; };
+  }
+
+  async function openAddModal(){
+    showModal('Adicionar site','Adicionar','', '', async (n,u)=>{
+      const r = await fetch('/api/sites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,url:u})});
+      if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    });
+  }
+
+  async function openEditModal(name){
+    // fetch existing url
+    const card = document.getElementById('card-'+name.replace(/\s/g,'_'));
+    const url = card ? card.querySelector('.site-url').textContent.trim() : '';
+    showModal('Editar site','Salvar', name, url, async (n,u)=>{
+      const r = await fetch('/api/sites/'+encodeURIComponent(name),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,url:u})});
+      if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    });
+  }
+
+  async function deleteSite(name){
+    if (!confirm('Remover site "'+name+'"?')) return;
+    const r = await fetch('/api/sites/'+encodeURIComponent(name),{method:'DELETE'});
+    if (!r.ok) { alert((await r.json()).error || 'Erro'); return; }
+    refresh();
+  }
+
   async function refresh() {
     try {
       const r = await fetch('/api/status');
@@ -337,6 +406,10 @@
       console.error('Erro ao atualizar:', e);
     }
   }
+
+  // initial + interval
+  // attach UI handlers
+  document.getElementById('add-site-btn').addEventListener('click', openAddModal);
 
   // initial + interval
   refresh();

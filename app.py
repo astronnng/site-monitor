@@ -2,13 +2,15 @@ import os
 import time
 import threading
 import requests
+import tempfile
+import yaml
 from datetime import datetime
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
 # ── Sites a monitorar ───────────────────────────────────────────────────────────
-SITES = [
+DEFAULT_SITES = [
     {"name": "Google",        "url": "https://www.google.com"},
     {"name": "GitHub",        "url": "https://github.com"},
     {"name": "Wikipedia",     "url": "https://www.wikipedia.org"},
@@ -20,6 +22,37 @@ SITES = [
     {"name": "SEU SITE",      "url": "https://www.SEUSITE.com.br"},
 ]
 
+SITES_FILE = os.getenv("SITES_FILE", "sites.yaml")
+
+
+def load_sites():
+    if os.path.exists(SITES_FILE):
+        try:
+            with open(SITES_FILE, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or []
+                return data
+        except Exception:
+            return DEFAULT_SITES.copy()
+    return DEFAULT_SITES.copy()
+
+
+def save_sites(sites: list):
+    # atomic write
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="sites", suffix=".yaml")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+            yaml.safe_dump(sites, f)
+        os.replace(tmp_path, SITES_FILE)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
+SITES = load_sites()
+
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 30))   # segundos
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 10)) # segundos
 
@@ -27,6 +60,7 @@ REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 10)) # segundos
 status_data: dict[str, dict] = {}
 history:     dict[str, list] = {s["name"]: [] for s in SITES}
 lock = threading.Lock()
+file_lock = threading.Lock()
 
 def check_site(site: dict) -> dict:
     name = site["name"]
@@ -72,6 +106,89 @@ def monitor_loop():
                 if len(hist) > 50:
                     history[r["name"]] = hist[-50:]
             time.sleep(CHECK_INTERVAL)
+
+
+@app.route("/api/sites", methods=["POST"])
+def api_add_site():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    url = (data.get("url") or "").strip()
+    if not name or not url:
+        return jsonify({"error": "name and url are required"}), 400
+
+    # basic duplicate check
+    with lock:
+        if any(s["name"] == name for s in SITES):
+            return jsonify({"error": "site with this name already exists"}), 409
+        SITES.append({"name": name, "url": url})
+        history[name] = []
+
+    # persist
+    with file_lock:
+        try:
+            save_sites(SITES)
+        except Exception:
+            pass
+
+    # optional immediate check
+    try:
+        r = check_site({"name": name, "url": url})
+        with lock:
+            status_data[name] = r
+            history[name].append({"status": r["status"], "latency_ms": r["latency_ms"], "checked_at": r["checked_at"]})
+    except Exception:
+        pass
+
+    return jsonify({"site": name, "url": url}), 201
+
+
+@app.route("/api/sites/<site_name>", methods=["PUT"])
+def api_update_site(site_name):
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    url = (data.get("url") or "").strip()
+    if not name or not url:
+        return jsonify({"error": "name and url are required"}), 400
+
+    with lock:
+        # find index
+        idx = next((i for i, s in enumerate(SITES) if s["name"] == site_name), None)
+        if idx is None:
+            return jsonify({"error": "site not found"}), 404
+        # prevent name collision
+        if name != site_name and any(s["name"] == name for s in SITES):
+            return jsonify({"error": "site with this name already exists"}), 409
+        SITES[idx] = {"name": name, "url": url}
+        # move history if name changed
+        if site_name != name:
+            history[name] = history.pop(site_name, [])
+
+    with file_lock:
+        try:
+            save_sites(SITES)
+        except Exception:
+            pass
+
+    return jsonify({"site": name, "url": url})
+
+
+@app.route("/api/sites/<site_name>", methods=["DELETE"])
+def api_delete_site(site_name):
+    with lock:
+        idx = next((i for i, s in enumerate(SITES) if s["name"] == site_name), None)
+        if idx is None:
+            return jsonify({"error": "site not found"}), 404
+        SITES.pop(idx)
+        status_data.pop(site_name, None)
+        history.pop(site_name, None)
+
+    with file_lock:
+        try:
+            save_sites(SITES)
+        except Exception:
+            pass
+
+    return jsonify({"deleted": site_name})
 
 # ── Inicia a thread de background (pode ser desativada com a var de ambiente `START_MONITOR=0`) ──
 START_MONITOR = os.getenv("START_MONITOR", "1")
