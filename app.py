@@ -17,6 +17,7 @@ SITES = [
     {"name": "OpenAI",        "url": "https://www.openai.com"},
     {"name": "Reddit",        "url": "https://www.reddit.com"},
     {"name": "YouTube",       "url": "https://www.youtube.com"},
+    {"name": "SEU SITE",      "url": "https://www.SEUSITE.com.br"},
 ]
 
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 30))   # segundos
