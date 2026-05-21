@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  site-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: site-monitor
+    restart: unless-stopped
+    ports:
+      - "5000:5000"          # Access at http://localhost:5000
+    environment:
+      - CHECK_INTERVAL=30    # How often (seconds) to check all sites
+      - REQUEST_TIMEOUT=10   # HTTP timeout per request (seconds)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    # Optional: resource limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.5"
+    #       memory: 256M
