@@ -1,13 +1,13 @@
 import os
 
-# Ensure monitor thread does not start during tests
+# Garantir que a thread de monitor não seja iniciada durante os testes
 os.environ.setdefault("START_MONITOR", "0")
 
 from app import app, status_data, history, lock
 
 
 def setup_module():
-    # populate minimal predictable data for endpoints
+    # popular dados mínimos e previsíveis para os endpoints
     with lock:
         status_data.clear()
         history.clear()

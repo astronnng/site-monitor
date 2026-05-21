@@ -1,29 +1,29 @@
-# ── Stage 1: base image ────────────────────────────────────────────────────────
+# ── Estágio 1: imagem base ─────────────────────────────────────────────────────
 FROM python:3.12-slim
 
-# Metadata
+# Metadados
 LABEL maintainer="you@example.com"
 LABEL description="Site Monitoring Dashboard"
 
-# Environment
+# Variáveis de ambiente
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     CHECK_INTERVAL=30 \
     REQUEST_TIMEOUT=10
 
-# Working directory
+# Diretório de trabalho
 WORKDIR /app
 
-# Install dependencies first (layer cache)
+# Instala dependências primeiro (aproveita cache de camadas)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source
+# Copia o código da aplicação
 COPY app.py .
 COPY templates/ templates/
 
-# Expose port
+# Expõe a porta
 EXPOSE 5000
 
-# Run with gunicorn (production-ready)
+# Executa com gunicorn (configuração pronta para produção)
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "120", "app:app"]

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🛰️ Monitor Site Dashboard Python</title>
   <style>
-    /* ── Reset & Base ── */
+    /* ── Reset e base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg:       #0d1117;
@@ -27,7 +27,7 @@
       min-height: 100vh;
     }
 
-    /* ── Header ── */
+    /* ── Cabeçalho ── */
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
@@ -50,10 +50,10 @@
       color: var(--muted);
     }
 
-    /* ── Main Layout ── */
+    /* ── Layout principal ── */
     main { max-width: 1300px; margin: 0 auto; padding: 28px 24px 60px; }
 
-    /* ── Summary Cards ── */
+    /* ── Cartões de resumo ── */
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -76,7 +76,7 @@
     .sum-card.lat   .value { color: var(--purple); }
     .sum-card.total .value { color: var(--blue); }
 
-    /* ── Sites Grid ── */
+    /* ── Grade de sites ── */
     .sites-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -115,7 +115,7 @@
     .meta-item .mlabel { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
     .meta-item .mvalue { font-size: .9rem; font-weight: 600; }
 
-    /* ── Mini Sparkline ── */
+    /* ── Mini sparkline ── */
     .sparkline-wrap { margin-top: 8px; }
     .sparkline-label { font-size: .68rem; color: var(--muted); margin-bottom: 4px; }
     .sparkline { display: flex; align-items: flex-end; gap: 3px; height: 36px; }
@@ -128,7 +128,7 @@
     .spark-bar.up   { background: var(--green); opacity: .85; }
     .spark-bar.down { background: var(--red);   opacity: .85; }
 
-    /* ── Loading overlay ── */
+    /* ── Overlay de carregamento ── */
     #loader {
       position: fixed; inset: 0;
       background: var(--bg);
@@ -148,7 +148,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Section title ── */
+    /* ── Título da seção ── */
     .section-title {
       font-size: .8rem;
       text-transform: uppercase;
@@ -159,7 +159,7 @@
       border-bottom: 1px solid var(--border);
     }
 
-    /* ── Pulse dot ── */
+    /* ── Ponto pulsante ── */
     .pulse-dot {
       width: 10px; height: 10px;
       border-radius: 50%;
@@ -178,7 +178,7 @@
       100% { box-shadow: 0 0 0 0 rgba(63,185,80,0); }
     }
 
-    /* ── Responsive ── */
+    /* ── Responsivo ── */
     @media (max-width: 600px) {
       header { padding: 14px 16px; }
       main   { padding: 18px 12px 40px; }
@@ -199,7 +199,7 @@
 </header>
 
 <main>
-  <!-- Summary -->
+  <!-- Resumo -->
   <div class="section-title">Overview</div>
   <div class="summary-grid">
     <div class="sum-card total">

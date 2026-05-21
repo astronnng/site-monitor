@@ -1,12 +1,12 @@
-# Byte-compiled / optimized / DLL files
+# Arquivos byte-compiled / otimizados / DLL
 __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
+# Extensões C
 *.so
 
-# Distribution / packaging
+# Distribuição / empacotamento
 .Python
 build/
 develop-eggs/
@@ -24,16 +24,16 @@ var/
 *.egg
 
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+#  Normalmente esses arquivos são gerados por um script Python a partir de um template
+#  antes do PyInstaller construir o exe, para injetar data/outras informações.
 *.manifest
 *.spec
 
-# Installer logs
+# Logs do instalador
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# Relatórios de testes / coverage
 htmlcov/
 .tox/
 .nox/
@@ -47,17 +47,17 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Translations
+# Traduções
 *.mo
 *.pot
 
-# Django stuff:
+# Itens relacionados ao Django:
 *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
-# Flask local env
+# Ambiente local do Flask
 .env
 .venv
 venv/

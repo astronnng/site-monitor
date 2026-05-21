@@ -7,7 +7,7 @@ from flask import Flask, jsonify, render_template
 
 app = Flask(__name__)
 
-# ── Sites to monitor ───────────────────────────────────────────────────────────
+# ── Sites a monitorar ───────────────────────────────────────────────────────────
 SITES = [
     {"name": "Google",        "url": "https://www.google.com"},
     {"name": "GitHub",        "url": "https://github.com"},
@@ -19,10 +19,10 @@ SITES = [
     {"name": "YouTube",       "url": "https://www.youtube.com"},
 ]
 
-CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 30))   # seconds
-REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 10)) # seconds
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 30))   # segundos
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 10)) # segundos
 
-# ── In-memory state ────────────────────────────────────────────────────────────
+# ── Estado em memória ───────────────────────────────────────────────────────────
 status_data: dict[str, dict] = {}
 history:     dict[str, list] = {s["name"]: [] for s in SITES}
 lock = threading.Lock()
@@ -67,18 +67,18 @@ def monitor_loop():
                     "latency_ms": r["latency_ms"],
                     "checked_at": r["checked_at"],
                 })
-                # keep last 50 entries per site
+                # manter últimos 50 registros por site
                 if len(hist) > 50:
                     history[r["name"]] = hist[-50:]
-        time.sleep(CHECK_INTERVAL)
+            time.sleep(CHECK_INTERVAL)
 
-# ── Start background thread (can be disabled with env `START_MONITOR=0`) ───────
+# ── Inicia a thread de background (pode ser desativada com a var de ambiente `START_MONITOR=0`) ──
 START_MONITOR = os.getenv("START_MONITOR", "1")
 if START_MONITOR != "0":
     t = threading.Thread(target=monitor_loop, daemon=True)
     t.start()
 
-# ── Routes ─────────────────────────────────────────────────────────────────────
+# ── Rotas ──────────────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
     return render_template("index.html", check_interval=CHECK_INTERVAL)

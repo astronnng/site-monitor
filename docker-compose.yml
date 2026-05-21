@@ -8,17 +8,17 @@ services:
     container_name: site-monitor
     restart: unless-stopped
     ports:
-      - "5000:5000"          # Access at http://localhost:5000
+      - "5000:5000"          # Acesse em http://localhost:5000
     environment:
-      - CHECK_INTERVAL=30    # How often (seconds) to check all sites
-      - REQUEST_TIMEOUT=10   # HTTP timeout per request (seconds)
+      - CHECK_INTERVAL=30    # Com que frequência (segundos) verificar todos os sites
+      - REQUEST_TIMEOUT=10   # Timeout HTTP por requisição (segundos)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
       interval: 60s
       timeout: 10s
       retries: 3
       start_period: 20s
-    # Optional: resource limits
+    # Opcional: limites de recursos
     # deploy:
     #   resources:
     #     limits:
