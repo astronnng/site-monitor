@@ -186,7 +186,7 @@
     }
   </style>
 </head>
-<body>
+<body data-check-interval="{{ check_interval }}">
 
 <div id="loader"><div class="spinner"></div></div>
 
@@ -245,7 +245,7 @@
 </div>
 
 <script>
-  const REFRESH_MS = {{ check_interval }} * 1000;
+  const REFRESH_MS = Number(document.body.dataset.checkInterval) * 1000;
   const historyCache = {};
 
   function fmt(ms) {
