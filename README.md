@@ -50,11 +50,67 @@ site-monitor/
 ├── app.py                # Backend Flask + lógica de monitoramento
 ├── templates/
 │   └── index.html        # Interface do painel (vanilla JS)
+├── static/
+│   ├── css/
+│   │   └── styles.css    # CSS extraído da página
+│   └── js/
+│       └── ui.js         # JS da UI (refresh, modal, theme toggle)
 ├── requirements.txt      # Dependências Python
 ├── Dockerfile            # Definição da imagem do container
 ├── docker-compose.yml    # Definição do serviço para Compose
 └── .dockerignore
 ```
+
+**Notas rápidas sobre a interface (maio/2026)**
+
+- O CSS foi externalizado para [static/css/styles.css](static/css/styles.css) e o JavaScript para [static/js/ui.js](static/js/ui.js).
+- Um botão de alternância de tema foi adicionado no cabeçalho: o tema (dark/light) é salvo em `localStorage`.
+- A refatoração mantém a mesma API; mudanças visuais são seguras e reversíveis.
+
+## 🛠️ Desenvolvimento local
+
+Para desenvolver e testar localmente (Windows / PowerShell):
+
+```powershell
+# criar e ativar venv
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# instalar dependências de runtime
+pip install -r requirements.txt
+
+# iniciar o servidor de desenvolvimento
+python app.py
+
+# abrir http://127.0.0.1:5000 no navegador
+```
+
+Ou em sistemas Unix (macOS / Linux):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+## ✅ Executando os testes
+
+Os testes usam `pytest`. Se não estiver instalado no ambiente virtual, instale com:
+
+```bash
+pip install pytest
+```
+
+Em seguida execute:
+
+```bash
+python -m pytest -q
+```
+
+Nota: este repositório pode listar `tests/` no `.gitignore` — se os seus testes locais não estiverem sendo comitados, verifique `.gitignore` antes de adicionar os arquivos ao repositório.
+
+## 📡 Endpoints da API
 
 ---
 
