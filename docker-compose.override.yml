@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  site-monitor:
+    # Monta apenas a pasta de templates para desenvolvimento rápido
+    volumes:
+      - ./templates:/app/templates:delegated
+
+    # Alternativa (descomentar) para montar o projeto inteiro e usar o reloader do Flask:
+    # volumes:
+    #   - ./:/app:delegated
+    # environment:
+    #   - FLASK_APP=app.py
+    #   - FLASK_ENV=development
+    # command: python -m flask run --host=0.0.0.0 --port=5000 --reload
