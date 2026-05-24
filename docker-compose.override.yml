@@ -1,10 +1,9 @@
-version: "3.9"
-
 services:
   site-monitor:
-    # Monta apenas a pasta de templates para desenvolvimento rápido
+    # Monta templates e assets estáticos para desenvolvimento rápido
     volumes:
       - ./templates:/app/templates:delegated
+      - ./static:/app/static:delegated
 
     # Alternativa (descomentar) para montar o projeto inteiro e usar o reloader do Flask:
     # volumes:

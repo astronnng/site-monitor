@@ -18,9 +18,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o código da aplicação
+# Copia o código da aplicação e os assets servidos pelo Flask
 COPY app.py .
 COPY templates/ templates/
+COPY static/ static/
+COPY sites.yaml .
 
 # Expõe a porta
 EXPOSE 5000
