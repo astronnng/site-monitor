@@ -159,15 +159,38 @@ def api_update_site(site_name):
         if name != site_name and any(s["name"] == name for s in SITES):
             return jsonify({"error": "site with this name already exists"}), 409
         SITES[idx] = {"name": name, "url": url}
-        # move history if name changed
+        # move in-memory state if name changed
         if site_name != name:
             history[name] = history.pop(site_name, [])
+            current_status = status_data.pop(site_name, None)
+            if current_status is not None:
+                current_status["name"] = name
+                current_status["url"] = url
+                status_data[name] = current_status
+        elif site_name in status_data:
+            status_data[site_name]["url"] = url
 
     with file_lock:
         try:
             save_sites(SITES)
         except Exception:
             pass
+
+    # immediate check keeps the card current after edits
+    try:
+        r = check_site({"name": name, "url": url})
+        with lock:
+            status_data[name] = r
+            hist = history.setdefault(name, [])
+            hist.append({
+                "status": r["status"],
+                "latency_ms": r["latency_ms"],
+                "checked_at": r["checked_at"],
+            })
+            if len(hist) > 50:
+                history[name] = hist[-50:]
+    except Exception:
+        pass
 
     return jsonify({"site": name, "url": url})
 

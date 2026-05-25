@@ -1,70 +1,122 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🛰️ Painel de Monitoramento de Sites</title>
+  <title>Monitor de Sites</title>
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body data-check-interval="{{ check_interval }}">
-
-<div id="loader"><div class="spinner"></div></div>
-
-<header>
-  <h1>🛰️ <span>Monitor</span> de Sites</h1>
-  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <span id="last-updated">Aguardando dados…</span>
-    <span id="refresh-badge">🔄 Atualiza a cada {{ check_interval }}s</span>
-    <button id="theme-toggle" aria-label="Alternar tema" style="background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:1.05rem">🌙</button>
-    <button id="add-site-btn" style="background:#0b1220;border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;cursor:pointer">➕ Adicionar site</button>
-  </div>
-</header>
-
-<main>
-  <!-- Resumo -->
-  <div class="section-title">Visão geral</div>
-  <div class="summary-grid">
-    <div class="sum-card total">
-      <span class="label">Total de sites</span>
-      <span class="value" id="s-total">–</span>
-    </div>
-    <div class="sum-card up">
-      <span class="label">🟢 Online</span>
-      <span class="value" id="s-up">–</span>
-    </div>
-    <div class="sum-card down">
-      <span class="label">🔴 Offline</span>
-      <span class="value" id="s-down">–</span>
-    </div>
-    <div class="sum-card lat">
-      <span class="label">Latência média</span>
-      <span class="value" id="s-lat">–</span>
-    </div>
+  <div id="loader" class="loader-shell" aria-hidden="true">
+    <div class="loader-spinner"></div>
   </div>
 
-  <!-- Sites -->
-  <div class="section-title">Sites</div>
-  <div class="sites-grid" id="sites-grid">
-    <!-- cards rendered by JS -->
-  </div>
-</main>
-
-<!-- Modal de adicionar/editar site -->
-<div id="site-modal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:1000;">
-  <div style="background:var(--surface);padding:18px;border-radius:10px;border:1px solid var(--border);width:420px;">
-    <h3 id="modal-title" style="margin-bottom:8px">Adicionar site</h3>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <input id="site-name" placeholder="Nome do site" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text)" />
-      <input id="site-url" placeholder="https://exemplo.com" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text)" />
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
-        <button id="modal-cancel" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted)">Cancelar</button>
-        <button id="modal-submit" style="padding:8px 12px;border-radius:6px;border:1px solid var(--blue);background:var(--blue);color:#07202c">Adicionar</button>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <span class="hero-kicker">Painel em tempo real</span>
+        <h1>Monitor de Sites</h1>
+        <p>
+          Acompanhe disponibilidade, latência e histórico dos seus endpoints em uma
+          interface mais rápida para operar.
+        </p>
       </div>
-      <div id="modal-feedback" style="color:var(--red);font-size:.9rem;display:none"></div>
+
+      <div class="hero-toolbar">
+        <div class="toolbar-group">
+          <div class="toolbar-chip">
+            <span class="chip-label">Última atualização</span>
+            <strong id="last-updated">Aguardando dados...</strong>
+          </div>
+          <div class="toolbar-chip toolbar-chip-accent">
+            <span class="chip-label">Frequência</span>
+            <strong id="refresh-badge">A cada {{ check_interval }}s</strong>
+          </div>
+        </div>
+
+        <div class="toolbar-actions">
+          <button id="theme-toggle" class="toolbar-button toolbar-button-ghost" type="button" aria-label="Alternar tema" aria-pressed="true">
+            <span class="toolbar-button-icon">🌙</span>
+            <span>Tema</span>
+          </button>
+          <button id="add-site-btn" class="toolbar-button toolbar-button-primary" type="button">
+            <span class="toolbar-button-icon">+</span>
+            <span>Adicionar site</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      <section class="dashboard-section">
+        <div class="section-heading">
+          <span class="section-eyebrow">Visão geral</span>
+          <h2>Resumo operacional</h2>
+        </div>
+
+        <div class="summary-grid">
+          <article class="summary-card summary-card-total">
+            <span class="summary-label">Total de sites</span>
+            <strong class="summary-value" id="s-total">–</strong>
+          </article>
+          <article class="summary-card summary-card-up">
+            <span class="summary-label">Online</span>
+            <strong class="summary-value" id="s-up">–</strong>
+          </article>
+          <article class="summary-card summary-card-down">
+            <span class="summary-label">Offline</span>
+            <strong class="summary-value" id="s-down">–</strong>
+          </article>
+          <article class="summary-card summary-card-latency">
+            <span class="summary-label">Latência média</span>
+            <strong class="summary-value" id="s-lat">–</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="section-heading">
+          <span class="section-eyebrow">Sites</span>
+          <h2>Estado atual por monitor</h2>
+        </div>
+
+        <div id="sites-grid" class="sites-grid" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="site-modal" class="modal-shell" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <div>
+          <span class="section-eyebrow">Gerenciar site</span>
+          <h3 id="modal-title">Adicionar site</h3>
+        </div>
+        <button id="modal-close" class="icon-button" type="button" aria-label="Fechar modal">✕</button>
+      </div>
+
+      <form id="site-form" class="modal-form">
+        <label class="field-group">
+          <span>Nome do site</span>
+          <input id="site-name" name="site-name" class="field-input" placeholder="Ex.: API principal" autocomplete="off" />
+        </label>
+
+        <label class="field-group">
+          <span>URL monitorada</span>
+          <input id="site-url" name="site-url" class="field-input" placeholder="https://exemplo.com/health" autocomplete="off" />
+        </label>
+
+        <div id="modal-feedback" class="modal-feedback" hidden></div>
+
+        <div class="modal-actions">
+          <button id="modal-cancel" class="toolbar-button toolbar-button-ghost" type="button">Cancelar</button>
+          <button id="modal-submit" class="toolbar-button toolbar-button-primary" type="submit">Adicionar</button>
+        </div>
+      </form>
     </div>
   </div>
-</div>
 
-<script src="/static/js/ui.js" defer></script>
+  <script src="/static/js/ui.js" defer></script>
 </body>
 </html>
