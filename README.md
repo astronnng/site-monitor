@@ -13,7 +13,16 @@ docker compose up -d --build
 ```
 Em seguida, abra **http://localhost:5000** no seu navegador.
 
-Observação: a imagem precisa incluir `templates/` e `static/`, e o `docker-compose.override.yml` de desenvolvimento monta ambos para refletir mudanças visuais sem reconstrução completa.
+Observação: a imagem inclui `templates/`, `static/` e `sites.yaml`. O `docker-compose.yml` também define um fluxo de desenvolvimento com `watch` para sincronizar mudanças visuais sem depender de um arquivo `override`.
+
+### Desenvolvimento visual com Compose
+```bash
+docker compose up --watch
+```
+Ou, se o stack já estiver rodando:
+```bash
+docker compose watch
+```
 
 ---
 
@@ -60,15 +69,14 @@ site-monitor/
 ├── sites.yaml            # Lista persistida/inicial de sites monitorados
 ├── requirements.txt      # Dependências Python
 ├── Dockerfile            # Definição da imagem do container
-├── docker-compose.yml    # Definição do serviço para Compose
-├── docker-compose.override.yml # Mounts de dev para templates/static
+├── docker-compose.yml    # Runtime padrão + watch para desenvolvimento
 └── .dockerignore
 ```
 
 **Notas rápidas sobre a interface (maio/2026)**
 
 - O CSS foi externalizado para [static/css/styles.css](static/css/styles.css) e o JavaScript para [static/js/ui.js](static/js/ui.js).
-- O build Docker copia `templates/`, `static/` e `sites.yaml`; no desenvolvimento com Compose, `templates/` e `static/` são montados via bind mount.
+- O build Docker copia `templates/`, `static/` e `sites.yaml`; no desenvolvimento com Compose, `templates/` e `static/` são sincronizados com `docker compose watch`.
 - Um botão de alternância de tema foi adicionado no cabeçalho: o tema (dark/light) é salvo em `localStorage`.
 - A refatoração mantém a mesma API; mudanças visuais são seguras e reversíveis.
 

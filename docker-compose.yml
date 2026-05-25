@@ -16,6 +16,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
+    develop:
+      watch:
+        - action: sync
+          path: ./templates
+          target: /app/templates
+        - action: sync
+          path: ./static
+          target: /app/static
     # Opcional: limites de recursos
     # deploy:
     #   resources:
