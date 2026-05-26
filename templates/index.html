@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Monitor de Sites</title>
+  <script>
+    (() => {
+      let theme = "dark";
+      try {
+        theme = localStorage.getItem("theme") || "dark";
+      } catch (_) {}
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -25,8 +34,8 @@
             }
           },
           boxShadow: {
-            shell: "0 14px 40px rgba(15, 23, 42, 0.10)",
-            card: "0 8px 20px rgba(15, 23, 42, 0.08)"
+            shell: "0 20px 50px rgba(15, 23, 42, 0.12)",
+            card: "0 10px 28px rgba(15, 23, 42, 0.08)"
           }
         }
       },
@@ -34,24 +43,24 @@
     };
   </script>
 </head>
-<body data-check-interval="{{ check_interval }}" data-theme="dark" class="min-h-full bg-slate-950 text-slate-100 antialiased transition-colors duration-300">
-  <div id="loader" class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/90 transition-opacity duration-300">
-    <div class="h-14 w-14 animate-spin rounded-full border-4 border-white/10 border-t-sky-400"></div>
+<body data-check-interval="{{ check_interval }}" data-theme="dark" class="min-h-full bg-shell-50 text-shell-900 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+  <div id="loader" class="fixed inset-0 z-[1000] flex items-center justify-center bg-shell-50/90 transition-opacity duration-300 dark:bg-slate-950/90">
+    <div class="h-14 w-14 animate-spin rounded-full border-4 border-slate-300/60 border-t-sky-500 dark:border-white/10 dark:border-t-sky-400"></div>
   </div>
 
   <div class="relative isolate min-h-screen overflow-hidden">
-    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_60%)]"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_60%)] dark:bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_60%)]"></div>
 
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <header class="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900 shadow-shell xl:rounded-[2.25rem]">
+      <header class="overflow-hidden rounded-[2rem] border border-shell-200/90 bg-white shadow-shell xl:rounded-[2.25rem] dark:border-white/10 dark:bg-slate-900">
         <div class="grid gap-8 p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)] lg:p-8">
           <div class="space-y-5">
-            <span class="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-200">
+            <span class="inline-flex items-center rounded-full border border-sky-300/60 bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-700 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200">
               Monitoramento vivo
             </span>
             <div class="space-y-4">
-              <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">Monitor de Sites</h1>
-              <p class="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
+              <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-shell-900 sm:text-5xl dark:text-white">Monitor de Sites</h1>
+              <p class="max-w-2xl text-sm leading-7 text-shell-700 sm:text-base dark:text-slate-300">
                 Acompanhe disponibilidade, latencia e historico dos seus endpoints em uma
                 interface reescrita com Tailwind e feedback mais imediato.
               </p>
@@ -60,20 +69,24 @@
 
           <div class="grid gap-4">
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <div class="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Ultima atualizacao</span>
-                <strong id="last-updated" class="mt-3 block text-base font-semibold text-white">Aguardando dados...</strong>
+              <div class="rounded-3xl border border-shell-200 bg-gradient-to-br from-white via-white to-shell-100 p-5 shadow-card dark:border-white/10 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/90">
+                <div class="flex items-start justify-between gap-3">
+                  <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Ultima atualizacao</span>
+                  <span class="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.18)]"></span>
+                </div>
+                <strong id="last-updated" class="mt-4 block text-2xl font-semibold tracking-tight text-shell-900 dark:text-white">Aguardando dados...</strong>
+                <span id="last-updated-meta" class="mt-2 block text-sm text-shell-600 dark:text-slate-400">Sincronizacao inicial em andamento</span>
               </div>
-              <div class="rounded-3xl border border-sky-400/20 bg-sky-400/10 p-4">
-                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-200/80">Frequencia</span>
-                <strong id="refresh-badge" class="mt-3 block text-base font-semibold text-sky-50">A cada {{ check_interval }}s</strong>
+              <div class="rounded-3xl border border-sky-300/50 bg-sky-50 p-5 shadow-card dark:border-sky-400/20 dark:bg-sky-400/10">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-700/80 dark:text-sky-200/80">Frequencia</span>
+                <strong id="refresh-badge" class="mt-4 block text-lg font-semibold text-sky-900 dark:text-sky-50">A cada {{ check_interval }}s</strong>
               </div>
             </div>
 
             <div class="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
-              <button id="theme-toggle" type="button" aria-label="Alternar tema" aria-pressed="true" class="inline-flex min-h-12 items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 text-sm font-medium text-slate-100 transition hover:-translate-y-0.5 hover:bg-white/10">
-                <span class="toolbar-button-icon">◐</span>
-                <span>Tema</span>
+              <button id="theme-toggle" type="button" aria-label="Alternar tema" aria-pressed="true" class="inline-flex min-h-12 items-center justify-center gap-3 rounded-full border border-shell-200 bg-white px-5 text-sm font-medium text-shell-800 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10">
+                <span class="toolbar-button-icon" aria-hidden="true">☾</span>
+                <span class="toolbar-button-label">Tema escuro</span>
               </button>
               <button id="add-site-btn" type="button" class="inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-sky-400 px-5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-sky-300">
                 <span class="toolbar-button-icon text-lg leading-none">+</span>
@@ -88,33 +101,33 @@
         <section class="grid gap-4">
           <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Visao geral</span>
-              <h2 class="mt-2 text-2xl font-semibold tracking-tight text-white">Resumo operacional</h2>
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Visao geral</span>
+              <h2 class="mt-2 text-2xl font-semibold tracking-tight text-shell-900 dark:text-white">Resumo operacional</h2>
             </div>
           </div>
 
           <div class="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
-                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Total de sites</span>
+              <article class="rounded-[1.75rem] border border-shell-200 bg-white p-5 shadow-card dark:border-white/10 dark:bg-slate-900">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Total de sites</span>
                 <strong class="mt-4 block text-4xl font-semibold tracking-tight text-sky-300" id="s-total">–</strong>
               </article>
-              <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
-                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Online</span>
+              <article class="rounded-[1.75rem] border border-shell-200 bg-white p-5 shadow-card dark:border-white/10 dark:bg-slate-900">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Online</span>
                 <strong class="mt-4 block text-4xl font-semibold tracking-tight text-emerald-400" id="s-up">–</strong>
               </article>
-              <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
-                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Offline</span>
+              <article class="rounded-[1.75rem] border border-shell-200 bg-white p-5 shadow-card dark:border-white/10 dark:bg-slate-900">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Offline</span>
                 <strong class="mt-4 block text-4xl font-semibold tracking-tight text-rose-400" id="s-down">–</strong>
               </article>
-              <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
-                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Latencia media</span>
+              <article class="rounded-[1.75rem] border border-shell-200 bg-white p-5 shadow-card dark:border-white/10 dark:bg-slate-900">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Latencia media</span>
                 <strong class="mt-4 block text-4xl font-semibold tracking-tight text-amber-300" id="s-lat">–</strong>
               </article>
             </div>
 
-            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
-              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Total de sites</span>
+            <article class="rounded-[1.75rem] border border-shell-200 bg-white p-5 shadow-card dark:border-white/10 dark:bg-slate-900">
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Total de sites</span>
               <div class="mt-4 grid gap-4 sm:grid-cols-[140px_minmax(0,1fr)] sm:items-center">
                 <div id="summary-donut" class="mx-auto h-36 w-36"></div>
                 <div id="summary-legend" class="grid gap-3"></div>
@@ -126,8 +139,8 @@
         <section class="grid gap-4">
           <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Sites</span>
-              <h2 class="mt-2 text-2xl font-semibold tracking-tight text-white">Estado atual por monitor</h2>
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Sites</span>
+              <h2 class="mt-2 text-2xl font-semibold tracking-tight text-shell-900 dark:text-white">Estado atual por monitor</h2>
             </div>
           </div>
 
@@ -138,31 +151,31 @@
   </div>
 
   <div id="site-modal" class="fixed inset-0 z-[1100] hidden items-center justify-center">
-    <div class="absolute inset-0 bg-slate-950/75" data-close-modal="true"></div>
-    <div class="relative z-10 w-[min(100%-1.5rem,34rem)] rounded-[2rem] border border-white/10 bg-slate-900 p-6 shadow-shell">
+    <div class="absolute inset-0 bg-slate-950/75 dark:bg-slate-950/75" data-close-modal="true"></div>
+    <div class="relative z-10 w-[min(100%-1.5rem,34rem)] rounded-[2rem] border border-shell-200 bg-white p-6 shadow-shell dark:border-white/10 dark:bg-slate-900">
       <div class="mb-5 flex items-start justify-between gap-4">
         <div>
-          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Gerenciar site</span>
-          <h3 id="modal-title" class="mt-2 text-2xl font-semibold tracking-tight text-white">Adicionar site</h3>
+          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Gerenciar site</span>
+          <h3 id="modal-title" class="mt-2 text-2xl font-semibold tracking-tight text-shell-900 dark:text-white">Adicionar site</h3>
         </div>
-        <button id="modal-close" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10" type="button" aria-label="Fechar modal">✕</button>
+        <button id="modal-close" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-shell-200 bg-shell-50 text-shell-700 transition hover:bg-shell-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10" type="button" aria-label="Fechar modal">✕</button>
       </div>
 
       <form id="site-form" class="grid gap-4">
-        <label class="grid gap-2 text-sm text-slate-300">
+        <label class="grid gap-2 text-sm text-shell-700 dark:text-slate-300">
           <span>Nome do site</span>
-          <input id="site-name" name="site-name" class="min-h-12 rounded-2xl border border-white/10 bg-slate-950/60 px-4 text-slate-100 outline-none transition focus:border-sky-400/50 focus:ring-4 focus:ring-sky-400/10" placeholder="Ex.: API principal" autocomplete="off" />
+          <input id="site-name" name="site-name" class="min-h-12 rounded-2xl border border-shell-200 bg-shell-50 px-4 text-shell-900 outline-none transition focus:border-sky-400/50 focus:ring-4 focus:ring-sky-400/10 dark:border-white/10 dark:bg-slate-950/60 dark:text-slate-100" placeholder="Ex.: API principal" autocomplete="off" />
         </label>
 
-        <label class="grid gap-2 text-sm text-slate-300">
+        <label class="grid gap-2 text-sm text-shell-700 dark:text-slate-300">
           <span>URL monitorada</span>
-          <input id="site-url" name="site-url" class="min-h-12 rounded-2xl border border-white/10 bg-slate-950/60 px-4 text-slate-100 outline-none transition focus:border-sky-400/50 focus:ring-4 focus:ring-sky-400/10" placeholder="https://exemplo.com/health" autocomplete="off" />
+          <input id="site-url" name="site-url" class="min-h-12 rounded-2xl border border-shell-200 bg-shell-50 px-4 text-shell-900 outline-none transition focus:border-sky-400/50 focus:ring-4 focus:ring-sky-400/10 dark:border-white/10 dark:bg-slate-950/60 dark:text-slate-100" placeholder="https://exemplo.com/health" autocomplete="off" />
         </label>
 
         <div id="modal-feedback" class="hidden rounded-2xl border px-4 py-3 text-sm" hidden></div>
 
         <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button id="modal-cancel" class="inline-flex min-h-12 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-medium text-slate-100 transition hover:bg-white/10" type="button">Cancelar</button>
+          <button id="modal-cancel" class="inline-flex min-h-12 items-center justify-center rounded-full border border-shell-200 bg-white px-5 text-sm font-medium text-shell-800 transition hover:bg-shell-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10" type="button">Cancelar</button>
           <button id="modal-submit" class="inline-flex min-h-12 items-center justify-center rounded-full bg-sky-400 px-5 text-sm font-semibold text-slate-950 transition hover:bg-sky-300" type="submit">Adicionar</button>
         </div>
       </form>

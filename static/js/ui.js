@@ -19,6 +19,7 @@ const elements = {
   loader: document.getElementById("loader"),
   sitesGrid: document.getElementById("sites-grid"),
   lastUpdated: document.getElementById("last-updated"),
+  lastUpdatedMeta: document.getElementById("last-updated-meta"),
   refreshBadge: document.getElementById("refresh-badge"),
   themeToggle: document.getElementById("theme-toggle"),
   addSiteBtn: document.getElementById("add-site-btn"),
@@ -40,12 +41,20 @@ const elements = {
 };
 
 function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
   document.body.setAttribute("data-theme", theme);
   try { localStorage.setItem("theme", theme); } catch (_) {}
   if (elements.themeToggle) {
     elements.themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
     const icon = elements.themeToggle.querySelector(".toolbar-button-icon");
-    if (icon) icon.textContent = theme === "dark" ? "◐" : "◑";
+    const label = elements.themeToggle.querySelector(".toolbar-button-label");
+    if (icon) icon.textContent = theme === "dark" ? "☾" : "☀";
+    if (label) label.textContent = theme === "dark" ? "Tema escuro" : "Tema claro";
+    elements.themeToggle.setAttribute("aria-label", theme === "dark" ? "Alternar para tema claro" : "Alternar para tema escuro");
+    elements.themeToggle.classList.toggle("border-sky-300", theme === "light");
+    elements.themeToggle.classList.toggle("bg-sky-50", theme === "light");
+    elements.themeToggle.classList.toggle("ring-2", theme === "dark");
+    elements.themeToggle.classList.toggle("ring-sky-400/20", theme === "dark");
   }
 }
 
@@ -74,8 +83,26 @@ function timeAgo(iso) {
   return `há ${Math.round(diff / 60)}m`;
 }
 
+function formatLastUpdated(iso) {
+  if (!iso) {
+    return {
+      headline: "Aguardando dados...",
+      meta: "Sincronizacao inicial em andamento",
+    };
+  }
+
+  const date = new Date(iso);
+  const sameDay = date.toDateString() === new Date().toDateString();
+  return {
+    headline: sameDay
+      ? date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      : date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+    meta: `Sincronizado ${timeAgo(iso)}`,
+  };
+}
+
 function latColorClass(ms) {
-  if (ms == null) return "text-slate-400";
+  if (ms == null) return "text-shell-500 dark:text-slate-400";
   if (ms < 300) return "text-emerald-400";
   if (ms < 800) return "text-amber-300";
   return "text-rose-400";
@@ -114,16 +141,16 @@ function pulseClass(status) {
 
 function renderEmptyState() {
   return `
-    <div class="col-span-full grid gap-2 rounded-[1.75rem] border border-dashed border-white/15 bg-slate-900/60 px-6 py-10 text-center text-slate-300">
-      <strong class="text-lg text-white">Nenhum site monitorado.</strong>
-      <span class="text-sm text-slate-400">Adicione um novo alvo para ver o painel ser atualizado automaticamente.</span>
+    <div class="col-span-full grid gap-2 rounded-[1.75rem] border border-dashed border-shell-300 bg-white/80 px-6 py-10 text-center text-shell-700 shadow-card dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-300">
+      <strong class="text-lg text-shell-900 dark:text-white">Nenhum site monitorado.</strong>
+      <span class="text-sm text-shell-500 dark:text-slate-400">Adicione um novo alvo para ver o painel ser atualizado automaticamente.</span>
     </div>
   `;
 }
 
 function buildStatusTimeline(hist) {
   if (!hist || hist.length === 0) {
-    return '<span class="text-xs text-slate-400">Sem historico ainda</span>';
+    return '<span class="text-xs text-shell-500 dark:text-slate-400">Sem historico ainda</span>';
   }
 
   return hist.map((entry) => {
@@ -153,7 +180,7 @@ function describeArc(cx, cy, r, startAngle, endAngle) {
 function renderSummaryDonut(summary, sites) {
   const total = summary.total || 0;
   if (!total) {
-    elements.donut.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-slate-400">Sem dados</div>';
+    elements.donut.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-shell-500 dark:text-slate-400">Sem dados</div>';
     elements.legend.innerHTML = "";
     return;
   }
@@ -177,16 +204,16 @@ function renderSummaryDonut(summary, sites) {
     <svg viewBox="0 0 120 120" class="h-full w-full" aria-hidden="true">
       <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(148,163,184,0.18)" stroke-width="14"></circle>
       ${paths}
-      <text x="60" y="56" text-anchor="middle" class="fill-white text-[14px] font-semibold">${total}</text>
-      <text x="60" y="74" text-anchor="middle" class="fill-slate-400 text-[8px] uppercase tracking-[0.24em]">sites</text>
+      <text x="60" y="56" text-anchor="middle" class="fill-shell-900 dark:fill-white text-[14px] font-semibold">${total}</text>
+      <text x="60" y="74" text-anchor="middle" class="fill-shell-500 dark:fill-slate-400 text-[8px] uppercase tracking-[0.24em]">sites</text>
     </svg>
   `;
 
   elements.legend.innerHTML = segments.map((segment) => `
-    <div class="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
+    <div class="flex items-center justify-between gap-3 rounded-2xl border border-shell-200 bg-shell-50 px-4 py-3 dark:border-white/10 dark:bg-slate-950/30">
       <div class="flex items-center gap-3">
         <span class="h-2.5 w-2.5 rounded-full ${segment.bgClass}"></span>
-        <span class="text-sm text-slate-300">${segment.label}</span>
+        <span class="text-sm text-shell-700 dark:text-slate-300">${segment.label}</span>
       </div>
       <strong class="text-sm font-semibold ${segment.textClass}">${segment.value}</strong>
     </div>
@@ -199,27 +226,27 @@ function renderCard(site, hist) {
   const siteName = escapeHtml(site.name);
   const siteUrl = escapeHtml(site.url);
   const errorLine = site.error
-    ? `<div class="rounded-2xl border border-rose-400/15 bg-rose-400/10 px-4 py-3 text-sm leading-6 text-rose-200">Atencao: ${escapeHtml(site.error)}</div>`
+    ? `<div class="rounded-2xl border border-rose-400/20 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700 dark:border-rose-400/15 dark:bg-rose-400/10 dark:text-rose-200">Atencao: ${escapeHtml(site.error)}</div>`
     : "";
   const httpCode = site.status_code ?? "–";
 
   return `
-    <article class="site-card rounded-[1.75rem] border ${cardBorder(status)} bg-slate-900 p-5 shadow-card" id="${siteDomId(site.name)}" data-site-name="${siteName}">
+    <article class="site-card rounded-[1.75rem] border border-shell-200 ${cardBorder(status)} bg-white p-5 shadow-card dark:bg-slate-900" id="${siteDomId(site.name)}" data-site-name="${siteName}">
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
-          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">${status === "UP" ? "Saudavel" : status === "DOWN" ? "Instavel" : "Pendente"}</span>
-          <h3 class="mt-3 flex items-center gap-3 text-2xl font-semibold tracking-tight text-white">
+          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">${status === "UP" ? "Saudavel" : status === "DOWN" ? "Instavel" : "Pendente"}</span>
+          <h3 class="mt-3 flex items-center gap-3 text-2xl font-semibold tracking-tight text-shell-900 dark:text-white">
             <span class="h-3 w-3 rounded-full ${pulseClass(status)}"></span>
             <span class="truncate">${siteName}</span>
           </h3>
-          <div class="mt-2 truncate text-sm text-slate-400">${siteUrl}</div>
+          <div class="mt-2 truncate text-sm text-shell-500 dark:text-slate-400">${siteUrl}</div>
         </div>
 
         <div class="flex flex-wrap justify-end gap-2">
-          <button class="inline-flex min-h-10 items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-100 hover:bg-white/10" type="button" data-action="edit" data-site-name="${siteName}" aria-label="Editar ${siteName}">
+          <button class="inline-flex min-h-10 items-center justify-center rounded-full border border-shell-200 bg-shell-50 px-4 text-sm font-medium text-shell-800 hover:bg-shell-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10" type="button" data-action="edit" data-site-name="${siteName}" aria-label="Editar ${siteName}">
             Editar
           </button>
-          <button class="inline-flex min-h-10 items-center justify-center rounded-full border border-rose-400/15 bg-rose-400/10 px-4 text-sm font-medium text-rose-200 hover:bg-rose-400/20" type="button" data-action="delete" data-site-name="${siteName}" aria-label="Excluir ${siteName}">
+          <button class="inline-flex min-h-10 items-center justify-center rounded-full border border-rose-300/40 bg-rose-50 px-4 text-sm font-medium text-rose-700 hover:bg-rose-100 dark:border-rose-400/15 dark:bg-rose-400/10 dark:text-rose-200 dark:hover:bg-rose-400/20" type="button" data-action="delete" data-site-name="${siteName}" aria-label="Excluir ${siteName}">
             Excluir
           </button>
         </div>
@@ -227,21 +254,21 @@ function renderCard(site, hist) {
 
       <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div class="inline-flex w-fit items-center gap-2 rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] ${statusBadge(status)}">${escapeHtml(status)}</div>
-        <span class="text-sm text-slate-400">${escapeHtml(checkedAt)}</span>
+        <span class="text-sm text-shell-500 dark:text-slate-400">${escapeHtml(checkedAt)}</span>
       </div>
 
       <div class="grid gap-3 sm:grid-cols-3">
-        <div class="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Latencia</span>
+        <div class="rounded-2xl border border-shell-200 bg-shell-50 p-4 dark:border-white/10 dark:bg-slate-950/30">
+          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-500">Latencia</span>
           <span class="mt-3 block text-lg font-semibold ${latColorClass(site.latency_ms)}">${escapeHtml(fmt(site.latency_ms))}</span>
         </div>
-        <div class="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">HTTP</span>
-          <span class="mt-3 block text-lg font-semibold text-white">${escapeHtml(String(httpCode))}</span>
+        <div class="rounded-2xl border border-shell-200 bg-shell-50 p-4 dark:border-white/10 dark:bg-slate-950/30">
+          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-500">HTTP</span>
+          <span class="mt-3 block text-lg font-semibold text-shell-900 dark:text-white">${escapeHtml(String(httpCode))}</span>
         </div>
-        <div class="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Sincronia</span>
-          <span class="mt-3 block text-lg font-semibold text-white">${status === "PENDING" ? "Aguardando" : "Em dia"}</span>
+        <div class="rounded-2xl border border-shell-200 bg-shell-50 p-4 dark:border-white/10 dark:bg-slate-950/30">
+          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-500">Sincronia</span>
+          <span class="mt-3 block text-lg font-semibold text-shell-900 dark:text-white">${status === "PENDING" ? "Aguardando" : "Em dia"}</span>
         </div>
       </div>
 
@@ -249,8 +276,8 @@ function renderCard(site, hist) {
 
       <div class="grid gap-3">
         <div class="flex items-center justify-between gap-3">
-          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Timeline recente</span>
-          <span class="text-xs text-slate-500">${hist ? hist.length : 0} checks</span>
+          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-shell-500 dark:text-slate-400">Timeline recente</span>
+          <span class="text-xs text-shell-500 dark:text-slate-500">${hist ? hist.length : 0} checks</span>
         </div>
         <div class="flex min-h-[24px] items-center gap-1.5">
           ${buildStatusTimeline(hist)}
@@ -289,8 +316,8 @@ function setModalFeedback(message, type = "error") {
 
   elements.modalFeedback.hidden = false;
   elements.modalFeedback.className = type === "success"
-    ? "rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200"
-    : "rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200";
+    ? "rounded-2xl border border-emerald-400/20 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200"
+    : "rounded-2xl border border-rose-400/20 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-400/10 dark:text-rose-200";
   elements.modalFeedback.textContent = message;
 }
 
@@ -385,7 +412,11 @@ async function applySnapshot(data) {
 
   updateSummary(data.summary);
   renderSummaryDonut(data.summary, data.sites);
-  elements.lastUpdated.textContent = `Atualizado ${new Date(data.generated_at).toLocaleTimeString()}`;
+  const updateCopy = formatLastUpdated(data.generated_at);
+  elements.lastUpdated.textContent = updateCopy.headline;
+  if (elements.lastUpdatedMeta) {
+    elements.lastUpdatedMeta.textContent = updateCopy.meta;
+  }
   elements.refreshBadge.textContent = `Interface ${UI_REFRESH_MS / 1000}s • Monitor ${MONITOR_INTERVAL_MS / 1000}s`;
 
   await Promise.all(data.sites.map((site) => fetchHistory(site.name)));
@@ -409,6 +440,9 @@ async function refresh() {
   } catch (error) {
     console.error("Erro ao atualizar:", error);
     elements.lastUpdated.textContent = "Falha ao sincronizar";
+    if (elements.lastUpdatedMeta) {
+      elements.lastUpdatedMeta.textContent = "Tentando novamente no proximo ciclo";
+    }
   } finally {
     refreshState.inFlight = false;
     if (refreshState.queued) {
