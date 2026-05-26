@@ -26,6 +26,8 @@ const elements = {
   up: document.getElementById("s-up"),
   down: document.getElementById("s-down"),
   lat: document.getElementById("s-lat"),
+  donut: document.getElementById("summary-donut"),
+  legend: document.getElementById("summary-legend"),
   modal: document.getElementById("site-modal"),
   modalTitle: document.getElementById("modal-title"),
   modalClose: document.getElementById("modal-close"),
@@ -92,30 +94,6 @@ function siteDomId(name) {
   return `card-${name.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
 }
 
-function buildSparkline(hist) {
-  if (!hist || hist.length === 0) {
-    return '<span class="text-xs text-slate-400">Sem historico ainda</span>';
-  }
-
-  const maxLat = Math.max(...hist.map((entry) => entry.latency_ms || 0), 1);
-  return hist.map((entry) => {
-    const pct = entry.latency_ms ? Math.max(12, Math.round((entry.latency_ms / maxLat) * 100)) : 12;
-    const cls = entry.status === "UP"
-      ? "from-emerald-300 to-emerald-500"
-      : "from-rose-300 to-rose-500";
-    return `<div class="flex-1 rounded-t-full rounded-b-sm bg-gradient-to-b ${cls}" style="height:${pct}%" title="${escapeHtml(entry.status)} | ${escapeHtml(fmt(entry.latency_ms))}"></div>`;
-  }).join("");
-}
-
-function renderEmptyState() {
-  return `
-    <div class="col-span-full grid gap-2 rounded-[1.75rem] border border-dashed border-white/15 bg-slate-900/60 px-6 py-10 text-center text-slate-300">
-      <strong class="text-lg text-white">Nenhum site monitorado.</strong>
-      <span class="text-sm text-slate-400">Adicione um novo alvo para ver o painel ser atualizado automaticamente.</span>
-    </div>
-  `;
-}
-
 function statusBadge(status) {
   if (status === "UP") return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
   if (status === "DOWN") return "border-rose-400/20 bg-rose-400/10 text-rose-300";
@@ -132,6 +110,87 @@ function pulseClass(status) {
   if (status === "UP") return "bg-emerald-400";
   if (status === "DOWN") return "bg-rose-400";
   return "bg-amber-300";
+}
+
+function renderEmptyState() {
+  return `
+    <div class="col-span-full grid gap-2 rounded-[1.75rem] border border-dashed border-white/15 bg-slate-900/60 px-6 py-10 text-center text-slate-300">
+      <strong class="text-lg text-white">Nenhum site monitorado.</strong>
+      <span class="text-sm text-slate-400">Adicione um novo alvo para ver o painel ser atualizado automaticamente.</span>
+    </div>
+  `;
+}
+
+function buildStatusTimeline(hist) {
+  if (!hist || hist.length === 0) {
+    return '<span class="text-xs text-slate-400">Sem historico ainda</span>';
+  }
+
+  return hist.map((entry) => {
+    let colorClass = "bg-amber-300/70";
+    if (entry.status === "UP") colorClass = "bg-emerald-400";
+    if (entry.status === "DOWN") colorClass = "bg-rose-400";
+    const title = `${entry.status} | ${entry.checked_at ? new Date(entry.checked_at).toLocaleTimeString() : "sem horario"} | ${fmt(entry.latency_ms)}`;
+    return `<div class="h-6 flex-1 rounded-md ${colorClass}" title="${escapeHtml(title)}"></div>`;
+  }).join("");
+}
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const angleRad = ((angleDeg - 90) * Math.PI) / 180;
+  return {
+    x: cx + r * Math.cos(angleRad),
+    y: cy + r * Math.sin(angleRad),
+  };
+}
+
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, r, endAngle);
+  const end = polarToCartesian(cx, cy, r, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+}
+
+function renderSummaryDonut(summary, sites) {
+  const total = summary.total || 0;
+  if (!total) {
+    elements.donut.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-slate-400">Sem dados</div>';
+    elements.legend.innerHTML = "";
+    return;
+  }
+
+  const pending = Math.max(0, sites.filter((site) => (site.status || "PENDING") === "PENDING").length);
+  const segments = [
+    { label: "Online", value: summary.up, color: "#34d399", textClass: "text-emerald-300", bgClass: "bg-emerald-400" },
+    { label: "Offline", value: summary.down, color: "#fb7185", textClass: "text-rose-300", bgClass: "bg-rose-400" },
+    { label: "Pendente", value: pending, color: "#fbbf24", textClass: "text-amber-300", bgClass: "bg-amber-300" },
+  ].filter((segment) => segment.value > 0);
+
+  let currentAngle = 0;
+  const paths = segments.map((segment) => {
+    const sweep = (segment.value / total) * 360;
+    const path = describeArc(60, 60, 42, currentAngle, currentAngle + sweep);
+    currentAngle += sweep;
+    return `<path d="${path}" stroke="${segment.color}" stroke-width="14" fill="none" stroke-linecap="round"></path>`;
+  }).join("");
+
+  elements.donut.innerHTML = `
+    <svg viewBox="0 0 120 120" class="h-full w-full" aria-hidden="true">
+      <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(148,163,184,0.18)" stroke-width="14"></circle>
+      ${paths}
+      <text x="60" y="56" text-anchor="middle" class="fill-white text-[14px] font-semibold">${total}</text>
+      <text x="60" y="74" text-anchor="middle" class="fill-slate-400 text-[8px] uppercase tracking-[0.24em]">sites</text>
+    </svg>
+  `;
+
+  elements.legend.innerHTML = segments.map((segment) => `
+    <div class="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
+      <div class="flex items-center gap-3">
+        <span class="h-2.5 w-2.5 rounded-full ${segment.bgClass}"></span>
+        <span class="text-sm text-slate-300">${segment.label}</span>
+      </div>
+      <strong class="text-sm font-semibold ${segment.textClass}">${segment.value}</strong>
+    </div>
+  `).join("");
 }
 
 function renderCard(site, hist) {
@@ -190,11 +249,11 @@ function renderCard(site, hist) {
 
       <div class="grid gap-3">
         <div class="flex items-center justify-between gap-3">
-          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Historico recente</span>
-          <span class="text-xs text-slate-500">${hist ? hist.length : 0} pontos</span>
+          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Timeline recente</span>
+          <span class="text-xs text-slate-500">${hist ? hist.length : 0} checks</span>
         </div>
-        <div class="flex min-h-[46px] items-end gap-1.5">
-          ${buildSparkline(hist)}
+        <div class="flex min-h-[24px] items-center gap-1.5">
+          ${buildStatusTimeline(hist)}
         </div>
       </div>
     </article>
@@ -325,6 +384,7 @@ async function applySnapshot(data) {
   data.sites.forEach((site) => sitesByName.set(site.name, site));
 
   updateSummary(data.summary);
+  renderSummaryDonut(data.summary, data.sites);
   elements.lastUpdated.textContent = `Atualizado ${new Date(data.generated_at).toLocaleTimeString()}`;
   elements.refreshBadge.textContent = `Interface ${UI_REFRESH_MS / 1000}s • Monitor ${MONITOR_INTERVAL_MS / 1000}s`;
 

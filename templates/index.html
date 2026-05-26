@@ -93,22 +93,32 @@
             </div>
           </div>
 
-          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div class="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Total de sites</span>
+                <strong class="mt-4 block text-4xl font-semibold tracking-tight text-sky-300" id="s-total">–</strong>
+              </article>
+              <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Online</span>
+                <strong class="mt-4 block text-4xl font-semibold tracking-tight text-emerald-400" id="s-up">–</strong>
+              </article>
+              <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Offline</span>
+                <strong class="mt-4 block text-4xl font-semibold tracking-tight text-rose-400" id="s-down">–</strong>
+              </article>
+              <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Latencia media</span>
+                <strong class="mt-4 block text-4xl font-semibold tracking-tight text-amber-300" id="s-lat">–</strong>
+              </article>
+            </div>
+
             <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
               <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Total de sites</span>
-              <strong class="mt-4 block text-4xl font-semibold tracking-tight text-sky-300" id="s-total">–</strong>
-            </article>
-            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
-              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Online</span>
-              <strong class="mt-4 block text-4xl font-semibold tracking-tight text-emerald-400" id="s-up">–</strong>
-            </article>
-            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
-              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Offline</span>
-              <strong class="mt-4 block text-4xl font-semibold tracking-tight text-rose-400" id="s-down">–</strong>
-            </article>
-            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
-              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Latencia media</span>
-              <strong class="mt-4 block text-4xl font-semibold tracking-tight text-amber-300" id="s-lat">–</strong>
+              <div class="mt-4 grid gap-4 sm:grid-cols-[140px_minmax(0,1fr)] sm:items-center">
+                <div id="summary-donut" class="mx-auto h-36 w-36"></div>
+                <div id="summary-legend" class="grid gap-3"></div>
+              </div>
             </article>
           </div>
         </section>
