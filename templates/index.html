@@ -25,8 +25,8 @@
             }
           },
           boxShadow: {
-            shell: "0 24px 80px rgba(15, 23, 42, 0.12)",
-            card: "0 14px 36px rgba(15, 23, 42, 0.10)"
+            shell: "0 14px 40px rgba(15, 23, 42, 0.10)",
+            card: "0 8px 20px rgba(15, 23, 42, 0.08)"
           }
         }
       },
@@ -40,11 +40,10 @@
   </div>
 
   <div class="relative isolate min-h-screen overflow-hidden">
-    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.24),transparent_55%)]"></div>
-    <div class="pointer-events-none absolute inset-x-0 top-40 -z-10 h-96 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.12),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.10),transparent_40%)]"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_60%)]"></div>
 
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <header class="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/80 shadow-shell backdrop-blur xl:rounded-[2.25rem]">
+      <header class="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900 shadow-shell xl:rounded-[2.25rem]">
         <div class="grid gap-8 p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)] lg:p-8">
           <div class="space-y-5">
             <span class="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-200">
@@ -95,19 +94,19 @@
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5 shadow-card backdrop-blur">
+            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
               <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Total de sites</span>
               <strong class="mt-4 block text-4xl font-semibold tracking-tight text-sky-300" id="s-total">–</strong>
             </article>
-            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5 shadow-card backdrop-blur">
+            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
               <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Online</span>
               <strong class="mt-4 block text-4xl font-semibold tracking-tight text-emerald-400" id="s-up">–</strong>
             </article>
-            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5 shadow-card backdrop-blur">
+            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
               <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Offline</span>
               <strong class="mt-4 block text-4xl font-semibold tracking-tight text-rose-400" id="s-down">–</strong>
             </article>
-            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5 shadow-card backdrop-blur">
+            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900 p-5 shadow-card">
               <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Latencia media</span>
               <strong class="mt-4 block text-4xl font-semibold tracking-tight text-amber-300" id="s-lat">–</strong>
             </article>
@@ -129,7 +128,7 @@
   </div>
 
   <div id="site-modal" class="fixed inset-0 z-[1100] hidden items-center justify-center">
-    <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-modal="true"></div>
+    <div class="absolute inset-0 bg-slate-950/75" data-close-modal="true"></div>
     <div class="relative z-10 w-[min(100%-1.5rem,34rem)] rounded-[2rem] border border-white/10 bg-slate-900 p-6 shadow-shell">
       <div class="mb-5 flex items-start justify-between gap-4">
         <div>

@@ -129,7 +129,7 @@ function cardBorder(status) {
 }
 
 function pulseClass(status) {
-  if (status === "UP") return "bg-emerald-400 shadow-[0_0_0_0_rgba(52,211,153,0.45)] animate-pulse";
+  if (status === "UP") return "bg-emerald-400";
   if (status === "DOWN") return "bg-rose-400";
   return "bg-amber-300";
 }
@@ -145,7 +145,7 @@ function renderCard(site, hist) {
   const httpCode = site.status_code ?? "–";
 
   return `
-    <article class="site-card rounded-[1.75rem] border ${cardBorder(status)} bg-slate-900/75 p-5 shadow-card backdrop-blur transition hover:-translate-y-1 hover:bg-slate-900/90" id="${siteDomId(site.name)}" data-site-name="${siteName}">
+    <article class="site-card rounded-[1.75rem] border ${cardBorder(status)} bg-slate-900 p-5 shadow-card" id="${siteDomId(site.name)}" data-site-name="${siteName}">
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
           <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">${status === "UP" ? "Saudavel" : status === "DOWN" ? "Instavel" : "Pendente"}</span>
@@ -157,10 +157,10 @@ function renderCard(site, hist) {
         </div>
 
         <div class="flex flex-wrap justify-end gap-2">
-          <button class="inline-flex min-h-10 items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-100 transition hover:bg-white/10" type="button" data-action="edit" data-site-name="${siteName}" aria-label="Editar ${siteName}">
+          <button class="inline-flex min-h-10 items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-100 hover:bg-white/10" type="button" data-action="edit" data-site-name="${siteName}" aria-label="Editar ${siteName}">
             Editar
           </button>
-          <button class="inline-flex min-h-10 items-center justify-center rounded-full border border-rose-400/15 bg-rose-400/10 px-4 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" type="button" data-action="delete" data-site-name="${siteName}" aria-label="Excluir ${siteName}">
+          <button class="inline-flex min-h-10 items-center justify-center rounded-full border border-rose-400/15 bg-rose-400/10 px-4 text-sm font-medium text-rose-200 hover:bg-rose-400/20" type="button" data-action="delete" data-site-name="${siteName}" aria-label="Excluir ${siteName}">
             Excluir
           </button>
         </div>
@@ -172,15 +172,15 @@ function renderCard(site, hist) {
       </div>
 
       <div class="grid gap-3 sm:grid-cols-3">
-        <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+        <div class="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
           <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Latencia</span>
           <span class="mt-3 block text-lg font-semibold ${latColorClass(site.latency_ms)}">${escapeHtml(fmt(site.latency_ms))}</span>
         </div>
-        <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+        <div class="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
           <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">HTTP</span>
           <span class="mt-3 block text-lg font-semibold text-white">${escapeHtml(String(httpCode))}</span>
         </div>
-        <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+        <div class="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
           <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Sincronia</span>
           <span class="mt-3 block text-lg font-semibold text-white">${status === "PENDING" ? "Aguardando" : "Em dia"}</span>
         </div>
