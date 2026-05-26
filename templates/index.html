@@ -1,117 +1,160 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="h-full">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Monitor de Sites</title>
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            shell: {
+              50: "#f7f8fc",
+              100: "#eef1f8",
+              200: "#dbe1ef",
+              500: "#64748b",
+              700: "#334155",
+              900: "#0f172a"
+            },
+            brand: {
+              400: "#38bdf8",
+              500: "#0ea5e9",
+              600: "#0284c7"
+            }
+          },
+          boxShadow: {
+            shell: "0 24px 80px rgba(15, 23, 42, 0.12)",
+            card: "0 14px 36px rgba(15, 23, 42, 0.10)"
+          }
+        }
+      },
+      darkMode: ["attribute", '[data-theme=\"dark\"]']
+    };
+  </script>
 </head>
-<body data-check-interval="{{ check_interval }}">
-  <div id="loader" class="loader-shell" aria-hidden="true">
-    <div class="loader-spinner"></div>
+<body data-check-interval="{{ check_interval }}" data-theme="dark" class="min-h-full bg-slate-950 text-slate-100 antialiased transition-colors duration-300">
+  <div id="loader" class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/90 transition-opacity duration-300">
+    <div class="h-14 w-14 animate-spin rounded-full border-4 border-white/10 border-t-sky-400"></div>
   </div>
 
-  <div class="page-shell">
-    <header class="hero">
-      <div class="hero-copy">
-        <span class="hero-kicker">Painel em tempo real</span>
-        <h1>Monitor de Sites</h1>
-        <p>
-          Acompanhe disponibilidade, latência e histórico dos seus endpoints em uma
-          interface mais rápida para operar.
-        </p>
-      </div>
+  <div class="relative isolate min-h-screen overflow-hidden">
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.24),transparent_55%)]"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-40 -z-10 h-96 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.12),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.10),transparent_40%)]"></div>
 
-      <div class="hero-toolbar">
-        <div class="toolbar-group">
-          <div class="toolbar-chip">
-            <span class="chip-label">Última atualização</span>
-            <strong id="last-updated">Aguardando dados...</strong>
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+      <header class="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/80 shadow-shell backdrop-blur xl:rounded-[2.25rem]">
+        <div class="grid gap-8 p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)] lg:p-8">
+          <div class="space-y-5">
+            <span class="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-200">
+              Monitoramento vivo
+            </span>
+            <div class="space-y-4">
+              <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">Monitor de Sites</h1>
+              <p class="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
+                Acompanhe disponibilidade, latencia e historico dos seus endpoints em uma
+                interface reescrita com Tailwind e feedback mais imediato.
+              </p>
+            </div>
           </div>
-          <div class="toolbar-chip toolbar-chip-accent">
-            <span class="chip-label">Frequência</span>
-            <strong id="refresh-badge">A cada {{ check_interval }}s</strong>
+
+          <div class="grid gap-4">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <div class="rounded-3xl border border-white/10 bg-white/5 p-4">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Ultima atualizacao</span>
+                <strong id="last-updated" class="mt-3 block text-base font-semibold text-white">Aguardando dados...</strong>
+              </div>
+              <div class="rounded-3xl border border-sky-400/20 bg-sky-400/10 p-4">
+                <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-200/80">Frequencia</span>
+                <strong id="refresh-badge" class="mt-3 block text-base font-semibold text-sky-50">A cada {{ check_interval }}s</strong>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+              <button id="theme-toggle" type="button" aria-label="Alternar tema" aria-pressed="true" class="inline-flex min-h-12 items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 text-sm font-medium text-slate-100 transition hover:-translate-y-0.5 hover:bg-white/10">
+                <span class="toolbar-button-icon">◐</span>
+                <span>Tema</span>
+              </button>
+              <button id="add-site-btn" type="button" class="inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-sky-400 px-5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-sky-300">
+                <span class="toolbar-button-icon text-lg leading-none">+</span>
+                <span>Adicionar site</span>
+              </button>
+            </div>
           </div>
         </div>
+      </header>
 
-        <div class="toolbar-actions">
-          <button id="theme-toggle" class="toolbar-button toolbar-button-ghost" type="button" aria-label="Alternar tema" aria-pressed="true">
-            <span class="toolbar-button-icon">🌙</span>
-            <span>Tema</span>
-          </button>
-          <button id="add-site-btn" class="toolbar-button toolbar-button-primary" type="button">
-            <span class="toolbar-button-icon">+</span>
-            <span>Adicionar site</span>
-          </button>
-        </div>
-      </div>
-    </header>
+      <main class="grid gap-8">
+        <section class="grid gap-4">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Visao geral</span>
+              <h2 class="mt-2 text-2xl font-semibold tracking-tight text-white">Resumo operacional</h2>
+            </div>
+          </div>
 
-    <main class="dashboard">
-      <section class="dashboard-section">
-        <div class="section-heading">
-          <span class="section-eyebrow">Visão geral</span>
-          <h2>Resumo operacional</h2>
-        </div>
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5 shadow-card backdrop-blur">
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Total de sites</span>
+              <strong class="mt-4 block text-4xl font-semibold tracking-tight text-sky-300" id="s-total">–</strong>
+            </article>
+            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5 shadow-card backdrop-blur">
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Online</span>
+              <strong class="mt-4 block text-4xl font-semibold tracking-tight text-emerald-400" id="s-up">–</strong>
+            </article>
+            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5 shadow-card backdrop-blur">
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Offline</span>
+              <strong class="mt-4 block text-4xl font-semibold tracking-tight text-rose-400" id="s-down">–</strong>
+            </article>
+            <article class="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5 shadow-card backdrop-blur">
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Latencia media</span>
+              <strong class="mt-4 block text-4xl font-semibold tracking-tight text-amber-300" id="s-lat">–</strong>
+            </article>
+          </div>
+        </section>
 
-        <div class="summary-grid">
-          <article class="summary-card summary-card-total">
-            <span class="summary-label">Total de sites</span>
-            <strong class="summary-value" id="s-total">–</strong>
-          </article>
-          <article class="summary-card summary-card-up">
-            <span class="summary-label">Online</span>
-            <strong class="summary-value" id="s-up">–</strong>
-          </article>
-          <article class="summary-card summary-card-down">
-            <span class="summary-label">Offline</span>
-            <strong class="summary-value" id="s-down">–</strong>
-          </article>
-          <article class="summary-card summary-card-latency">
-            <span class="summary-label">Latência média</span>
-            <strong class="summary-value" id="s-lat">–</strong>
-          </article>
-        </div>
-      </section>
+        <section class="grid gap-4">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Sites</span>
+              <h2 class="mt-2 text-2xl font-semibold tracking-tight text-white">Estado atual por monitor</h2>
+            </div>
+          </div>
 
-      <section class="dashboard-section">
-        <div class="section-heading">
-          <span class="section-eyebrow">Sites</span>
-          <h2>Estado atual por monitor</h2>
-        </div>
-
-        <div id="sites-grid" class="sites-grid" aria-live="polite"></div>
-      </section>
-    </main>
+          <div id="sites-grid" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
   </div>
 
-  <div id="site-modal" class="modal-shell" aria-hidden="true">
-    <div class="modal-backdrop" data-close-modal="true"></div>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal-header">
+  <div id="site-modal" class="fixed inset-0 z-[1100] hidden items-center justify-center">
+    <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-modal="true"></div>
+    <div class="relative z-10 w-[min(100%-1.5rem,34rem)] rounded-[2rem] border border-white/10 bg-slate-900 p-6 shadow-shell">
+      <div class="mb-5 flex items-start justify-between gap-4">
         <div>
-          <span class="section-eyebrow">Gerenciar site</span>
-          <h3 id="modal-title">Adicionar site</h3>
+          <span class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Gerenciar site</span>
+          <h3 id="modal-title" class="mt-2 text-2xl font-semibold tracking-tight text-white">Adicionar site</h3>
         </div>
-        <button id="modal-close" class="icon-button" type="button" aria-label="Fechar modal">✕</button>
+        <button id="modal-close" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10" type="button" aria-label="Fechar modal">✕</button>
       </div>
 
-      <form id="site-form" class="modal-form">
-        <label class="field-group">
+      <form id="site-form" class="grid gap-4">
+        <label class="grid gap-2 text-sm text-slate-300">
           <span>Nome do site</span>
-          <input id="site-name" name="site-name" class="field-input" placeholder="Ex.: API principal" autocomplete="off" />
+          <input id="site-name" name="site-name" class="min-h-12 rounded-2xl border border-white/10 bg-slate-950/60 px-4 text-slate-100 outline-none transition focus:border-sky-400/50 focus:ring-4 focus:ring-sky-400/10" placeholder="Ex.: API principal" autocomplete="off" />
         </label>
 
-        <label class="field-group">
+        <label class="grid gap-2 text-sm text-slate-300">
           <span>URL monitorada</span>
-          <input id="site-url" name="site-url" class="field-input" placeholder="https://exemplo.com/health" autocomplete="off" />
+          <input id="site-url" name="site-url" class="min-h-12 rounded-2xl border border-white/10 bg-slate-950/60 px-4 text-slate-100 outline-none transition focus:border-sky-400/50 focus:ring-4 focus:ring-sky-400/10" placeholder="https://exemplo.com/health" autocomplete="off" />
         </label>
 
-        <div id="modal-feedback" class="modal-feedback" hidden></div>
+        <div id="modal-feedback" class="hidden rounded-2xl border px-4 py-3 text-sm" hidden></div>
 
-        <div class="modal-actions">
-          <button id="modal-cancel" class="toolbar-button toolbar-button-ghost" type="button">Cancelar</button>
-          <button id="modal-submit" class="toolbar-button toolbar-button-primary" type="submit">Adicionar</button>
+        <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button id="modal-cancel" class="inline-flex min-h-12 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-medium text-slate-100 transition hover:bg-white/10" type="button">Cancelar</button>
+          <button id="modal-submit" class="inline-flex min-h-12 items-center justify-center rounded-full bg-sky-400 px-5 text-sm font-semibold text-slate-950 transition hover:bg-sky-300" type="submit">Adicionar</button>
         </div>
       </form>
     </div>
