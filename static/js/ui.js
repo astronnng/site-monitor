@@ -46,9 +46,44 @@ const elements = {
   siteUrl: document.getElementById("site-url"),
 };
 
+const ELEMENT_IDS = {
+  loader: "loader",
+  sitesGrid: "sites-grid",
+  lastUpdated: "last-updated",
+  lastUpdatedMeta: "last-updated-meta",
+  refreshBadge: "refresh-badge",
+  themeToggle: "theme-toggle",
+  addSiteBtn: "add-site-btn",
+  total: "s-total",
+  up: "s-up",
+  down: "s-down",
+  lat: "s-lat",
+  donut: "summary-donut",
+  legend: "summary-legend",
+  modal: "site-modal",
+  modalTitle: "modal-title",
+  modalClose: "modal-close",
+  modalCancel: "modal-cancel",
+  modalSubmit: "modal-submit",
+  modalFeedback: "modal-feedback",
+  siteForm: "site-form",
+  siteName: "site-name",
+  siteUrl: "site-url",
+};
+
+function ensureElements() {
+  Object.keys(ELEMENT_IDS).forEach((key) => {
+    if (!elements[key]) {
+      elements[key] = document.getElementById(ELEMENT_IDS[key]);
+    }
+  });
+}
+
 function applyTheme(theme) {
+  ensureElements();
+  console.debug("[ui] applyTheme:", theme, "themeToggleFound:", !!elements.themeToggle);
   document.documentElement.setAttribute("data-theme", theme);
-  document.body.setAttribute("data-theme", theme);
+  if (document.body) document.body.setAttribute("data-theme", theme);
   try { localStorage.setItem("theme", theme); } catch (_) {}
   if (elements.themeToggle) {
     elements.themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
@@ -68,11 +103,29 @@ function initTheme() {
   const saved = (() => {
     try { return localStorage.getItem("theme"); } catch (_) { return null; }
   })() || "dark";
+  // ensure we have element references before applying theme and binding listener
+  ensureElements();
+  console.debug("[ui] initTheme: saved=", saved, "themeToggle:", !!elements.themeToggle);
   applyTheme(saved);
-  elements.themeToggle?.addEventListener("click", () => {
-    const current = document.body.getAttribute("data-theme") || "dark";
-    applyTheme(current === "dark" ? "light" : "dark");
-  });
+  const toggleEl = elements.themeToggle || document.getElementById("theme-toggle");
+  if (toggleEl) {
+    toggleEl.addEventListener("click", () => {
+      console.debug("[ui] theme-toggle clicked");
+      const current = document.body.getAttribute("data-theme") || "dark";
+      const next = current === "dark" ? "light" : "dark";
+      applyTheme(next);
+      // send a lightweight POST to the server so we can observe clicks in server logs
+      try {
+        fetch('/__theme_debug', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme: next }),
+        }).catch(() => {});
+      } catch (_) {}
+    });
+  } else {
+    console.warn("[ui] initTheme: theme-toggle element not found; click listener not attached");
+  }
 }
 
 function fmt(ms) {
@@ -547,6 +600,7 @@ function bindEvents() {
 }
 
 function startup() {
+  ensureElements();
   initTheme();
   bindEvents();
   refresh();

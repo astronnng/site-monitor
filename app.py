@@ -9,6 +9,17 @@ from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
+# Endpoint de debug usado apenas para diagnosticar cliques do toggle de tema
+@app.route("/__theme_debug", methods=["POST"])
+def __theme_debug():
+    try:
+        data = request.get_json() or {}
+        theme = data.get("theme")
+        app.logger.info(f"[theme-debug] toggle -> {theme}")
+    except Exception:
+        app.logger.exception("[theme-debug] erro ao processar payload")
+    return ("", 204)
+
 # ── Sites a monitorar ───────────────────────────────────────────────────────────
 DEFAULT_SITES = [
     {"name": "Google",        "url": "https://www.google.com"},
