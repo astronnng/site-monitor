@@ -62,6 +62,29 @@ history:     dict[str, list] = {s["name"]: [] for s in SITES}
 lock = threading.Lock()
 file_lock = threading.Lock()
 
+
+def build_site_snapshot(site: dict) -> dict:
+    current = status_data.get(site["name"])
+    if current:
+        return {
+            "name": current["name"],
+            "url": current["url"],
+            "status": current.get("status", "PENDING"),
+            "status_code": current.get("status_code"),
+            "latency_ms": current.get("latency_ms"),
+            "checked_at": current.get("checked_at"),
+            "error": current.get("error"),
+        }
+
+    return {
+        "name": site["name"],
+        "url": site["url"],
+        "status": "PENDING",
+        "status_code": None,
+        "latency_ms": None,
+        "checked_at": None,
+    }
+
 def check_site(site: dict) -> dict:
     name = site["name"]
     url  = site["url"]
@@ -96,7 +119,7 @@ def monitor_loop():
         with lock:
             for r in results:
                 status_data[r["name"]] = r
-                hist = history[r["name"]]
+                hist = history.setdefault(r["name"], [])
                 hist.append({
                     "status": r["status"],
                     "latency_ms": r["latency_ms"],
@@ -105,7 +128,7 @@ def monitor_loop():
                 # manter últimos 50 registros por site
                 if len(hist) > 50:
                     history[r["name"]] = hist[-50:]
-            time.sleep(CHECK_INTERVAL)
+        time.sleep(CHECK_INTERVAL)
 
 
 @app.route("/api/sites", methods=["POST"])
@@ -227,7 +250,7 @@ def index():
 @app.route("/api/status")
 def api_status():
     with lock:
-        sites = list(status_data.values())
+        sites = [build_site_snapshot(site) for site in SITES]
         total   = len(SITES)
         up      = sum(1 for s in sites if s.get("status") == "UP")
         down    = total - up

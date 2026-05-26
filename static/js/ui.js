@@ -1,10 +1,18 @@
-const REFRESH_MS = Number(document.body.dataset.checkInterval) * 1000;
+const MONITOR_INTERVAL_MS = Number(document.body.dataset.checkInterval) * 1000;
+const UI_REFRESH_MS = Math.min(5000, Math.max(2000, Math.floor(MONITOR_INTERVAL_MS / 3) || 3000));
+
 const historyCache = {};
 const sitesByName = new Map();
 const modalState = {
   mode: "add",
   originalName: null,
   isSubmitting: false,
+};
+
+const refreshState = {
+  inFlight: false,
+  queued: false,
+  timerId: null,
 };
 
 const elements = {
@@ -34,7 +42,7 @@ function applyTheme(theme) {
   try { localStorage.setItem("theme", theme); } catch (_) {}
   if (elements.themeToggle) {
     elements.themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
-    elements.themeToggle.querySelector(".toolbar-button-icon").textContent = theme === "dark" ? "🌙" : "☀️";
+    elements.themeToggle.querySelector(".toolbar-button-icon").textContent = theme === "dark" ? "◐" : "◑";
   }
 }
 
@@ -56,6 +64,7 @@ function fmt(ms) {
 }
 
 function timeAgo(iso) {
+  if (!iso) return "aguardando primeira checagem";
   const diff = Math.round((Date.now() - new Date(iso)) / 1000);
   if (diff < 5) return "agora mesmo";
   if (diff < 60) return `há ${diff}s`;
@@ -65,7 +74,7 @@ function timeAgo(iso) {
 function latColor(ms) {
   if (ms == null) return "var(--muted)";
   if (ms < 300) return "var(--green)";
-  if (ms < 800) return "var(--yellow)";
+  if (ms < 800) return "var(--amber)";
   return "var(--red)";
 }
 
@@ -84,7 +93,7 @@ function siteDomId(name) {
 
 function buildSparkline(hist) {
   if (!hist || hist.length === 0) {
-    return '<span class="sparkline-label">Sem histórico ainda</span>';
+    return '<span class="sparkline-empty">Sem histórico ainda</span>';
   }
 
   const maxLat = Math.max(...hist.map((entry) => entry.latency_ms || 0), 1);
@@ -98,7 +107,8 @@ function buildSparkline(hist) {
 function renderEmptyState() {
   return `
     <div class="empty-state">
-      Nenhum site monitorado no momento. Use o botao "Adicionar site" para criar o primeiro card.
+      <strong>Nenhum site monitorado.</strong>
+      <span>Adicione um novo alvo para ver o painel ser atualizado automaticamente.</span>
     </div>
   `;
 }
@@ -106,7 +116,7 @@ function renderEmptyState() {
 function renderCard(site, hist) {
   const status = site.status || "PENDING";
   const dotCls = status === "UP" ? "up" : status === "DOWN" ? "down" : "pending";
-  const checkedAt = site.checked_at ? timeAgo(site.checked_at) : "pendente";
+  const checkedAt = timeAgo(site.checked_at);
   const siteName = escapeHtml(site.name);
   const siteUrl = escapeHtml(site.url);
   const errorLine = site.error ? `<div class="site-error">Atencao: ${escapeHtml(site.error)}</div>` : "";
@@ -115,27 +125,29 @@ function renderCard(site, hist) {
   return `
     <article class="site-card status-${status}" id="${siteDomId(site.name)}" data-site-name="${siteName}">
       <div class="card-header">
-        <div class="card-title-row">
-          <div class="site-title-block">
-            <h3 class="site-name">
-              <span class="pulse-dot ${dotCls}"></span>
-              <span>${siteName}</span>
-            </h3>
-            <div class="site-url">${siteUrl}</div>
-          </div>
+        <div class="site-title-block">
+          <span class="site-index">${status === "UP" ? "Saudavel" : status === "DOWN" ? "Instavel" : "Pendente"}</span>
+          <h3 class="site-name">
+            <span class="pulse-dot ${dotCls}"></span>
+            <span>${siteName}</span>
+          </h3>
+          <div class="site-url">${siteUrl}</div>
         </div>
 
         <div class="card-actions">
           <button class="action-button action-button-edit" type="button" data-action="edit" data-site-name="${siteName}" aria-label="Editar ${siteName}">
-            ✏️
+            Editar
           </button>
           <button class="action-button action-button-danger" type="button" data-action="delete" data-site-name="${siteName}" aria-label="Excluir ${siteName}">
-            🗑️
+            Excluir
           </button>
         </div>
       </div>
 
-      <div class="status-badge badge-${status}">${escapeHtml(status)}</div>
+      <div class="status-row">
+        <div class="status-badge badge-${status}">${escapeHtml(status)}</div>
+        <span class="status-caption">${escapeHtml(checkedAt)}</span>
+      </div>
 
       <div class="meta-row">
         <div class="meta-item">
@@ -147,15 +159,18 @@ function renderCard(site, hist) {
           <span class="mvalue">${escapeHtml(String(httpCode))}</span>
         </div>
         <div class="meta-item">
-          <span class="mlabel">Ultima verificacao</span>
-          <span class="mvalue">${escapeHtml(checkedAt)}</span>
+          <span class="mlabel">Sincronia</span>
+          <span class="mvalue">${status === "PENDING" ? "Aguardando" : "Em dia"}</span>
         </div>
       </div>
 
       ${errorLine}
 
       <div class="sparkline-wrap">
-        <div class="sparkline-label">Ultimas ${hist ? hist.length : 0} verificacoes</div>
+        <div class="sparkline-header">
+          <span class="sparkline-label">Historico recente</span>
+          <span class="sparkline-count">${hist ? hist.length : 0} pontos</span>
+        </div>
         <div class="sparkline">${buildSparkline(hist)}</div>
       </div>
     </article>
@@ -270,6 +285,55 @@ function markCardBusy(siteName, isBusy) {
   }
 }
 
+function scheduleRefresh(delay = UI_REFRESH_MS) {
+  if (refreshState.timerId) {
+    clearTimeout(refreshState.timerId);
+  }
+  refreshState.timerId = setTimeout(() => {
+    refreshState.timerId = null;
+    refresh();
+  }, delay);
+}
+
+async function applySnapshot(data) {
+  sitesByName.clear();
+  data.sites.forEach((site) => sitesByName.set(site.name, site));
+
+  updateSummary(data.summary);
+  elements.lastUpdated.textContent = `Atualizado ${new Date(data.generated_at).toLocaleTimeString()}`;
+  elements.refreshBadge.textContent = `Interface ${UI_REFRESH_MS / 1000}s • Monitor ${MONITOR_INTERVAL_MS / 1000}s`;
+
+  await Promise.all(data.sites.map((site) => fetchHistory(site.name)));
+  renderSites(data.sites);
+  elements.loader.classList.add("hide");
+}
+
+async function refresh() {
+  if (refreshState.inFlight) {
+    refreshState.queued = true;
+    return;
+  }
+
+  refreshState.inFlight = true;
+  refreshState.queued = false;
+
+  try {
+    const data = await fetchJson("/api/status");
+    await applySnapshot(data);
+  } catch (error) {
+    console.error("Erro ao atualizar:", error);
+    elements.lastUpdated.textContent = "Falha ao sincronizar";
+  } finally {
+    refreshState.inFlight = false;
+    if (refreshState.queued) {
+      refreshState.queued = false;
+      refresh();
+    } else {
+      scheduleRefresh();
+    }
+  }
+}
+
 async function handleDelete(siteName) {
   const site = sitesByName.get(siteName);
   if (!site) return;
@@ -281,15 +345,6 @@ async function handleDelete(siteName) {
     sitesByName.delete(siteName);
     delete historyCache[siteName];
     renderSites([...sitesByName.values()]);
-    updateSummary({
-      total: sitesByName.size,
-      up: [...sitesByName.values()].filter((entry) => entry.status === "UP").length,
-      down: [...sitesByName.values()].filter((entry) => entry.status !== "UP").length,
-      avg_latency_ms: (() => {
-        const lats = [...sitesByName.values()].map((entry) => entry.latency_ms).filter((value) => value != null);
-        return lats.length ? Math.round(lats.reduce((sum, value) => sum + value, 0) / lats.length) : null;
-      })(),
-    });
     await refresh();
   } catch (error) {
     alert(error.message || "Erro ao excluir site");
@@ -330,32 +385,13 @@ async function handleSubmit(event) {
       });
     }
 
-    setModalFeedback("Alteracoes salvas com sucesso.", "success");
     await refresh();
+    setModalFeedback("Painel atualizado com sucesso.", "success");
     setTimeout(closeModal, 220);
   } catch (error) {
     setModalFeedback(error.message || "Erro ao salvar site.");
   } finally {
     setModalSubmitting(false);
-  }
-}
-
-async function refresh() {
-  try {
-    const data = await fetchJson("/api/status");
-    sitesByName.clear();
-    data.sites.forEach((site) => sitesByName.set(site.name, site));
-
-    updateSummary(data.summary);
-    elements.lastUpdated.textContent = `Atualizado ${new Date(data.generated_at).toLocaleTimeString()}`;
-    elements.refreshBadge.textContent = `A cada ${REFRESH_MS / 1000}s`;
-
-    await Promise.all(data.sites.map((site) => fetchHistory(site.name)));
-    renderSites(data.sites);
-    elements.loader.classList.add("hide");
-  } catch (error) {
-    console.error("Erro ao atualizar:", error);
-    elements.lastUpdated.textContent = "Falha ao atualizar dados";
   }
 }
 
@@ -393,5 +429,4 @@ document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   bindEvents();
   refresh();
-  setInterval(refresh, REFRESH_MS);
 });
