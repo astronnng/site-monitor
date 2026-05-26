@@ -5,12 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Monitor de Sites</title>
   <script>
-    (() => {
-      let theme = "dark";
+    (function() {
+      var theme = "dark";
       try {
         theme = localStorage.getItem("theme") || "dark";
       } catch (_) {}
       document.documentElement.setAttribute("data-theme", theme);
+      function setBodyTheme() {
+        if (document.body) document.body.setAttribute("data-theme", theme);
+      }
+      if (document.body) {
+        setBodyTheme();
+      } else {
+        document.addEventListener("DOMContentLoaded", setBodyTheme);
+      }
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -43,7 +51,7 @@
     };
   </script>
 </head>
-<body data-check-interval="{{ check_interval }}" data-theme="dark" class="min-h-full bg-shell-50 text-shell-900 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+<body data-check-interval="{{ check_interval }}" class="min-h-full bg-shell-50 text-shell-900 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
   <div id="loader" class="fixed inset-0 z-[1000] flex items-center justify-center bg-shell-50/90 transition-opacity duration-300 dark:bg-slate-950/90">
     <div class="h-14 w-14 animate-spin rounded-full border-4 border-slate-300/60 border-t-sky-500 dark:border-white/10 dark:border-t-sky-400"></div>
   </div>
@@ -182,6 +190,6 @@
     </div>
   </div>
 
-  <script src="/static/js/ui.js" defer></script>
+  <script src="{{ url_for('static', filename='js/ui.js') }}" defer></script>
 </body>
 </html>

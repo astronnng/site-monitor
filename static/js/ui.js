@@ -1,4 +1,10 @@
-const MONITOR_INTERVAL_MS = Number(document.body.dataset.checkInterval) * 1000;
+const MONITOR_INTERVAL_MS = (() => {
+  try {
+    return Number(document.body.dataset.checkInterval) * 1000;
+  } catch (_) {
+    return 30000;
+  }
+})();
 const UI_REFRESH_MS = Math.min(5000, Math.max(2000, Math.floor(MONITOR_INTERVAL_MS / 3) || 3000));
 
 const historyCache = {};
@@ -540,8 +546,15 @@ function bindEvents() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function startup() {
   initTheme();
   bindEvents();
   refresh();
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", startup);
+} else {
+  // DOM already parsed — run startup immediately
+  startup();
+}
