@@ -26,6 +26,15 @@ services:
         - action: sync
           path: ./static
           target: /app/static
+        - action: sync
+          path: ./package.json
+          target: /app/package.json
+        - action: sync
+          path: ./tailwind.config.js
+          target: /app/tailwind.config.js
+        - action: sync
+          path: ./postcss.config.js
+          target: /app/postcss.config.js
     # Opcional: limites de recursos
     # deploy:
     #   resources:

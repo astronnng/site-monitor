@@ -16,6 +16,7 @@ Painel leve e self-hosted para acompanhar disponibilidade, latência e históric
 - O backend reaproveita conexões HTTP para reduzir overhead.
 - O endpoint `GET /api/status` já devolve o histórico recente de cada site, evitando múltiplas chamadas extras do frontend.
 - Em produção, o container usa `1` worker do Gunicorn para evitar inconsistência de estado entre processos.
+- O CSS do painel é compilado localmente com Tailwind, sem dependência de CDN em produção.
 
 ## Início rápido
 
@@ -71,12 +72,17 @@ docker run -d \
 ```text
 site-monitor/
 ├── app.py
+├── package.json
+├── package-lock.json
+├── tailwind.config.js
+├── postcss.config.js
 ├── sites.yaml
 ├── templates/
 │   └── index.html
 ├── static/
 │   ├── css/
-│   │   └── styles.css
+│   │   ├── src.css
+│   │   └── app.css
 │   └── js/
 │       └── ui.js
 ├── tests/
@@ -89,11 +95,26 @@ site-monitor/
 
 ## Desenvolvimento local
 
+### Build do CSS
+
+```bash
+npm install
+npm run build:css
+```
+
+Para recompilar automaticamente durante ajustes visuais:
+
+```bash
+npm run watch:css
+```
+
 ### Windows / PowerShell
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
+npm install
+npm run build:css
 pip install -r requirements.txt
 python app.py
 ```
@@ -103,6 +124,8 @@ python app.py
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+npm install
+npm run build:css
 pip install -r requirements.txt
 python app.py
 ```
@@ -112,6 +135,7 @@ Depois, acesse `http://127.0.0.1:5000`.
 ## Testes
 
 ```bash
+npm run build:css
 python -m pytest -q
 ```
 

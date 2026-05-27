@@ -1,4 +1,20 @@
-# ── Estágio 1: imagem base ─────────────────────────────────────────────────────
+# ── Estágio 1: build do CSS ────────────────────────────────────────────────────
+FROM node:20-alpine AS css-builder
+
+WORKDIR /app
+
+COPY package.json ./
+COPY package-lock.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+COPY templates/ templates/
+COPY static/js/ static/js/
+COPY static/css/src.css static/css/src.css
+
+RUN npm ci
+RUN npm run build:css
+
+# ── Estágio 2: imagem de runtime ───────────────────────────────────────────────
 FROM python:3.12-slim
 
 # Metadados
@@ -23,7 +39,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia o código da aplicação e os assets servidos pelo Flask
 COPY app.py .
 COPY templates/ templates/
-COPY static/ static/
+COPY static/js/ static/js/
+COPY --from=css-builder /app/static/css/app.css static/css/app.css
 COPY sites.yaml .
 
 # Expõe a porta

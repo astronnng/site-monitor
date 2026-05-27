@@ -17,6 +17,7 @@ ENV/
 env/
 env.bak/
 venv.bak/
+node_modules/
 
 # Test / coverage artifacts
 .pytest_cache/
