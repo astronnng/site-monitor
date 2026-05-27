@@ -50,14 +50,182 @@
       darkMode: ["attribute", '[data-theme=\"dark\"]']
     };
   </script>
+  <style>
+    .liquid-background {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: -20;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(14, 165, 233, 0.18), transparent 34%),
+        radial-gradient(circle at 80% 18%, rgba(59, 130, 246, 0.16), transparent 30%),
+        radial-gradient(circle at 50% 80%, rgba(56, 189, 248, 0.12), transparent 38%),
+        linear-gradient(180deg, #f7f8fc 0%, #eef4ff 48%, #f8fafc 100%);
+    }
+
+    [data-theme="dark"] .liquid-background {
+      background:
+        radial-gradient(circle at 18% 18%, rgba(34, 211, 238, 0.12), transparent 34%),
+        radial-gradient(circle at 84% 14%, rgba(14, 165, 233, 0.14), transparent 30%),
+        radial-gradient(circle at 52% 78%, rgba(56, 189, 248, 0.1), transparent 36%),
+        linear-gradient(180deg, #020617 0%, #0f172a 55%, #020617 100%);
+    }
+
+    .liquid-background::before {
+      content: "";
+      position: absolute;
+      inset: -20%;
+      background:
+        linear-gradient(115deg, rgba(255, 255, 255, 0.12), transparent 45%),
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 60%);
+      opacity: 0.65;
+    }
+
+    .liquid-blobs {
+      position: absolute;
+      inset: -12%;
+      filter: url(#liquid-goo) blur(32px);
+      opacity: 0.9;
+      transform: translate3d(0, 0, 0);
+    }
+
+    .liquid-blob {
+      position: absolute;
+      border-radius: 9999px;
+      mix-blend-mode: screen;
+      will-change: transform;
+    }
+
+    [data-theme="light"] .liquid-blob {
+      mix-blend-mode: multiply;
+    }
+
+    .liquid-blob--1 {
+      top: -5%;
+      left: -8%;
+      width: 36rem;
+      height: 36rem;
+      background: radial-gradient(circle at 35% 35%, rgba(186, 230, 253, 0.95), rgba(56, 189, 248, 0.78) 48%, rgba(14, 165, 233, 0.22) 72%, transparent 74%);
+      animation: liquidFloatA 18s ease-in-out infinite alternate;
+    }
+
+    .liquid-blob--2 {
+      top: 8%;
+      right: -10%;
+      width: 28rem;
+      height: 28rem;
+      background: radial-gradient(circle at 45% 40%, rgba(255, 255, 255, 0.94), rgba(59, 130, 246, 0.75) 44%, rgba(14, 165, 233, 0.2) 70%, transparent 72%);
+      animation: liquidFloatB 22s ease-in-out infinite alternate;
+    }
+
+    .liquid-blob--3 {
+      bottom: -12%;
+      left: 14%;
+      width: 30rem;
+      height: 30rem;
+      background: radial-gradient(circle at 45% 38%, rgba(125, 211, 252, 0.92), rgba(6, 182, 212, 0.62) 50%, rgba(14, 165, 233, 0.18) 72%, transparent 74%);
+      animation: liquidFloatC 26s ease-in-out infinite alternate;
+    }
+
+    .liquid-blob--4 {
+      right: 20%;
+      bottom: 8%;
+      width: 22rem;
+      height: 22rem;
+      background: radial-gradient(circle at 42% 40%, rgba(224, 242, 254, 0.88), rgba(14, 165, 233, 0.5) 50%, rgba(2, 132, 199, 0.18) 72%, transparent 74%);
+      animation: liquidFloatD 20s ease-in-out infinite alternate;
+    }
+
+    .liquid-grid {
+      position: absolute;
+      inset: 0;
+      opacity: 0.08;
+      background-image:
+        linear-gradient(rgba(148, 163, 184, 0.35) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.35) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(circle at center, black 48%, transparent 85%);
+    }
+
+    [data-theme="dark"] .liquid-grid {
+      opacity: 0.06;
+    }
+
+    @keyframes liquidFloatA {
+      0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+      50% { transform: translate3d(10%, 6%, 0) scale(1.12) rotate(12deg); }
+      100% { transform: translate3d(18%, 10%, 0) scale(0.96) rotate(24deg); }
+    }
+
+    @keyframes liquidFloatB {
+      0% { transform: translate3d(0, 0, 0) scale(1.05) rotate(0deg); }
+      50% { transform: translate3d(-12%, 8%, 0) scale(0.92) rotate(-10deg); }
+      100% { transform: translate3d(-18%, 16%, 0) scale(1.08) rotate(-18deg); }
+    }
+
+    @keyframes liquidFloatC {
+      0% { transform: translate3d(0, 0, 0) scale(0.94) rotate(0deg); }
+      50% { transform: translate3d(12%, -10%, 0) scale(1.1) rotate(14deg); }
+      100% { transform: translate3d(22%, -18%, 0) scale(0.98) rotate(26deg); }
+    }
+
+    @keyframes liquidFloatD {
+      0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+      50% { transform: translate3d(-8%, -12%, 0) scale(1.16) rotate(-16deg); }
+      100% { transform: translate3d(6%, -18%, 0) scale(0.92) rotate(-28deg); }
+    }
+
+    @media (max-width: 768px) {
+      .liquid-blobs {
+        filter: url(#liquid-goo) blur(24px);
+      }
+
+      .liquid-blob--1,
+      .liquid-blob--3 {
+        width: 24rem;
+        height: 24rem;
+      }
+
+      .liquid-blob--2,
+      .liquid-blob--4 {
+        width: 18rem;
+        height: 18rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .liquid-blob {
+        animation: none !important;
+      }
+    }
+  </style>
 </head>
 <body data-check-interval="{{ check_interval }}" class="min-h-full bg-shell-50 text-shell-900 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+  <svg aria-hidden="true" class="absolute h-0 w-0 overflow-hidden">
+    <filter id="liquid-goo">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="16" result="blur"></feGaussianBlur>
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12" result="goo"></feColorMatrix>
+      <feBlend in="SourceGraphic" in2="goo"></feBlend>
+    </filter>
+  </svg>
+
+  <div class="liquid-background" aria-hidden="true">
+    <div class="liquid-grid"></div>
+    <div class="liquid-blobs">
+      <span class="liquid-blob liquid-blob--1"></span>
+      <span class="liquid-blob liquid-blob--2"></span>
+      <span class="liquid-blob liquid-blob--3"></span>
+      <span class="liquid-blob liquid-blob--4"></span>
+    </div>
+  </div>
+
   <div id="loader" class="fixed inset-0 z-[1000] flex items-center justify-center bg-shell-50/90 transition-opacity duration-300 dark:bg-slate-950/90">
     <div class="h-14 w-14 animate-spin rounded-full border-4 border-slate-300/60 border-t-sky-500 dark:border-white/10 dark:border-t-sky-400"></div>
   </div>
 
   <div class="relative isolate min-h-screen overflow-hidden">
-    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_60%)] dark:bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_60%)]"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.24),transparent_60%)] dark:bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.1),transparent_60%)]"></div>
 
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
       <header class="overflow-hidden rounded-[2rem] border border-shell-200/90 bg-white shadow-shell xl:rounded-[2.25rem] dark:border-white/10 dark:bg-slate-900">
