@@ -1,77 +1,40 @@
-# Arquivos byte-compiled / otimizados / DLL
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-.test/
-# Extensões C
 *.so
 
-# Distribuição / empacotamento
-.Python
+# Build / packaging
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
 *.egg-info/
-.installed.cfg
 *.egg
 
-# PyInstaller
-#  Normalmente esses arquivos são gerados por um script Python a partir de um template
-#  antes do PyInstaller construir o exe, para injetar data/outras informações.
-*.manifest
-*.spec
-
-# Logs do instalador
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Relatórios de testes / coverage
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Traduções
-*.mo
-*.pot
-
-# Itens relacionados ao Django:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Ambiente local do Flask
-.env
-.venv
+# Virtual environments
+.venv/
 venv/
 ENV/
+env/
 env.bak/
 venv.bak/
-tests/
 
-# macOS
-.DS_Store
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+.tox/
+.nox/
+coverage.xml
+nosetests.xml
+*.cover
+*.py,cover
 
-# VS Code
+# Local environment / runtime
+.env
+*.log
+
+# Editor / OS
 .vscode/
-
-# Git
-.git/
-.github/workflows/
+.DS_Store
