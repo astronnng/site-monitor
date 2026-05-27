@@ -40,6 +40,8 @@ docker run -d \
   -p 5000:5000 \
   -e CHECK_INTERVAL=30 \
   -e REQUEST_TIMEOUT=10 \
+  -e MAX_CHECK_WORKERS=8 \
+  -e HISTORY_LIMIT=50 \
   site-monitor
 ```
 
@@ -51,6 +53,10 @@ docker run -d \
 |----------------------|--------|-----------|
 | `CHECK_INTERVAL`     | `30`   | Segundos entre ciclos completos de checagem |
 | `REQUEST_TIMEOUT`    | `10`   | Timeout das requisições HTTP em segundos |
+| `MAX_CHECK_WORKERS`  | `8`    | Número máximo de checagens paralelas por ciclo |
+| `HISTORY_LIMIT`      | `50`   | Quantidade de pontos de histórico mantidos por site |
+
+Observação: como o monitor usa estado em memória e uma thread de background, o container de produção roda com um único worker do Gunicorn para evitar estado duplicado entre processos.
 
 ---
 

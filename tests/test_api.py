@@ -1,7 +1,4 @@
 import os
-
-# Garantir que a thread de monitor não seja iniciada durante os testes
-import os
 import tempfile
 
 # Garantir que a thread de monitor não seja iniciada durante os testes
@@ -31,7 +28,9 @@ def test_api_status():
     assert resp.status_code == 200
     j = resp.get_json()
     assert "sites" in j
-    assert any(s.get("name") == "TestSite" for s in j["sites"])
+    site = next(s for s in j["sites"] if s.get("name") == "TestSite")
+    assert site["history"][0]["status"] == "UP"
+    assert j["summary"]["down"] == 0
 
 
 def test_api_history():

@@ -9,7 +9,9 @@ LABEL description="Site Monitoring Dashboard"
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     CHECK_INTERVAL=30 \
-    REQUEST_TIMEOUT=10
+    REQUEST_TIMEOUT=10 \
+    MAX_CHECK_WORKERS=8 \
+    HISTORY_LIMIT=50
 
 # Diretório de trabalho
 WORKDIR /app
@@ -28,4 +30,4 @@ COPY sites.yaml .
 EXPOSE 5000
 
 # Executa com gunicorn (configuração pronta para produção)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "120", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "8", "--timeout", "120", "app:app"]

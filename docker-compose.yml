@@ -10,6 +10,8 @@ services:
     environment:
       - CHECK_INTERVAL=30    # Com que frequência (segundos) verificar todos os sites
       - REQUEST_TIMEOUT=10   # Timeout HTTP por requisição (segundos)
+      - MAX_CHECK_WORKERS=8  # Quantas checagens podem rodar em paralelo por ciclo
+      - HISTORY_LIMIT=50     # Quantos pontos de histórico manter por site
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
       interval: 60s

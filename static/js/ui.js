@@ -5,7 +5,7 @@ const MONITOR_INTERVAL_MS = (() => {
     return 30000;
   }
 })();
-const UI_REFRESH_MS = Math.min(5000, Math.max(2000, Math.floor(MONITOR_INTERVAL_MS / 3) || 3000));
+const UI_REFRESH_MS = Math.max(5000, MONITOR_INTERVAL_MS || 30000);
 
 const historyCache = {};
 const sitesByName = new Map();
@@ -81,7 +81,6 @@ function ensureElements() {
 
 function applyTheme(theme) {
   ensureElements();
-  console.debug("[ui] applyTheme:", theme, "themeToggleFound:", !!elements.themeToggle);
   document.documentElement.setAttribute("data-theme", theme);
   if (document.body) document.body.setAttribute("data-theme", theme);
   try { localStorage.setItem("theme", theme); } catch (_) {}
@@ -103,28 +102,15 @@ function initTheme() {
   const saved = (() => {
     try { return localStorage.getItem("theme"); } catch (_) { return null; }
   })() || "dark";
-  // ensure we have element references before applying theme and binding listener
   ensureElements();
-  console.debug("[ui] initTheme: saved=", saved, "themeToggle:", !!elements.themeToggle);
   applyTheme(saved);
   const toggleEl = elements.themeToggle || document.getElementById("theme-toggle");
   if (toggleEl) {
     toggleEl.addEventListener("click", () => {
-      console.debug("[ui] theme-toggle clicked");
       const current = document.body.getAttribute("data-theme") || "dark";
       const next = current === "dark" ? "light" : "dark";
       applyTheme(next);
-      // send a lightweight POST to the server so we can observe clicks in server logs
-      try {
-        fetch('/__theme_debug', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ theme: next }),
-        }).catch(() => {});
-      } catch (_) {}
     });
-  } else {
-    console.warn("[ui] initTheme: theme-toggle element not found; click listener not attached");
   }
 }
 
@@ -358,13 +344,6 @@ async function fetchJson(url, options = {}) {
   return payload;
 }
 
-async function fetchHistory(siteName) {
-  try {
-    const data = await fetchJson(`/api/history/${encodeURIComponent(siteName)}`);
-    historyCache[siteName] = data.history || [];
-  } catch (_) {}
-}
-
 function setModalFeedback(message, type = "error") {
   if (!message) {
     elements.modalFeedback.hidden = true;
@@ -467,7 +446,14 @@ function scheduleRefresh(delay = UI_REFRESH_MS) {
 
 async function applySnapshot(data) {
   sitesByName.clear();
-  data.sites.forEach((site) => sitesByName.set(site.name, site));
+  data.sites.forEach((site) => {
+    sitesByName.set(site.name, site);
+    historyCache[site.name] = site.history || [];
+  });
+
+  Object.keys(historyCache).forEach((siteName) => {
+    if (!sitesByName.has(siteName)) delete historyCache[siteName];
+  });
 
   updateSummary(data.summary);
   renderSummaryDonut(data.summary, data.sites);
@@ -478,7 +464,6 @@ async function applySnapshot(data) {
   }
   elements.refreshBadge.textContent = `Interface ${UI_REFRESH_MS / 1000}s • Monitor ${MONITOR_INTERVAL_MS / 1000}s`;
 
-  await Promise.all(data.sites.map((site) => fetchHistory(site.name)));
   renderSites(data.sites);
   elements.loader.classList.add("opacity-0", "pointer-events-none");
   setTimeout(() => elements.loader.classList.add("hidden"), 280);

@@ -1,24 +1,16 @@
 import os
 import time
 import threading
-import requests
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+
+import requests
 import yaml
-from datetime import datetime
+from requests.adapters import HTTPAdapter
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
-
-# Endpoint de debug usado apenas para diagnosticar cliques do toggle de tema
-@app.route("/__theme_debug", methods=["POST"])
-def __theme_debug():
-    try:
-        data = request.get_json() or {}
-        theme = data.get("theme")
-        app.logger.info(f"[theme-debug] toggle -> {theme}")
-    except Exception:
-        app.logger.exception("[theme-debug] erro ao processar payload")
-    return ("", 204)
 
 # ── Sites a monitorar ───────────────────────────────────────────────────────────
 DEFAULT_SITES = [
@@ -49,7 +41,8 @@ def load_sites():
 
 def save_sites(sites: list):
     # atomic write
-    tmp_fd, tmp_path = tempfile.mkstemp(prefix="sites", suffix=".yaml")
+    target_dir = os.path.dirname(os.path.abspath(SITES_FILE)) or "."
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="sites", suffix=".yaml", dir=target_dir)
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             yaml.safe_dump(sites, f)
@@ -66,12 +59,67 @@ SITES = load_sites()
 
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 30))   # segundos
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 10)) # segundos
+MAX_CHECK_WORKERS = max(1, int(os.getenv("MAX_CHECK_WORKERS", "8")))
+HISTORY_LIMIT = max(1, int(os.getenv("HISTORY_LIMIT", "50")))
+HTTP_USER_AGENT = "SiteMonitor/1.0"
 
 # ── Estado em memória ───────────────────────────────────────────────────────────
 status_data: dict[str, dict] = {}
 history:     dict[str, list] = {s["name"]: [] for s in SITES}
 lock = threading.Lock()
 file_lock = threading.Lock()
+http_local = threading.local()
+
+
+def utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def build_http_session() -> requests.Session:
+    session = requests.Session()
+    adapter = HTTPAdapter(
+        pool_connections=MAX_CHECK_WORKERS,
+        pool_maxsize=MAX_CHECK_WORKERS,
+    )
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    session.headers.update({"User-Agent": HTTP_USER_AGENT})
+    return session
+
+
+def get_http_session() -> requests.Session:
+    session = getattr(http_local, "session", None)
+    if session is None:
+        session = build_http_session()
+        http_local.session = session
+    return session
+
+
+def trim_history(entries: list) -> None:
+    if len(entries) > HISTORY_LIMIT:
+        del entries[:-HISTORY_LIMIT]
+
+
+def append_history_entry(result: dict) -> None:
+    hist = history.setdefault(result["name"], [])
+    hist.append({
+        "status": result["status"],
+        "latency_ms": result["latency_ms"],
+        "checked_at": result["checked_at"],
+    })
+    trim_history(hist)
+
+
+def run_checks(sites: list[dict]) -> list[dict]:
+    if not sites:
+        return []
+
+    workers = min(len(sites), MAX_CHECK_WORKERS)
+    if workers == 1:
+        return [check_site(site) for site in sites]
+
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="site-check") as executor:
+        return list(executor.map(check_site, sites))
 
 
 def build_site_snapshot(site: dict) -> dict:
@@ -100,45 +148,38 @@ def check_site(site: dict) -> dict:
     name = site["name"]
     url  = site["url"]
     try:
-        start = time.time()
-        r = requests.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True,
-                         headers={"User-Agent": "SiteMonitor/1.0"})
-        latency = round((time.time() - start) * 1000)   # ms
-        ok = r.status_code < 400
+        session = get_http_session()
+        start = time.perf_counter()
+        with session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True, stream=True) as response:
+            latency = round((time.perf_counter() - start) * 1000)   # ms
+            status_code = response.status_code
+            ok = status_code < 400
         return {
             "name": name, "url": url,
             "status": "UP" if ok else "DOWN",
-            "status_code": r.status_code,
+            "status_code": status_code,
             "latency_ms": latency,
-            "checked_at": datetime.utcnow().isoformat() + "Z",
+            "checked_at": utc_now_iso(),
         }
     except requests.exceptions.Timeout:
         return {"name": name, "url": url, "status": "DOWN",
                 "status_code": None, "latency_ms": None,
-                "error": "Timeout", "checked_at": datetime.utcnow().isoformat() + "Z"}
+                "error": "Timeout", "checked_at": utc_now_iso()}
     except Exception as e:
         return {"name": name, "url": url, "status": "DOWN",
                 "status_code": None, "latency_ms": None,
-                "error": str(e)[:80], "checked_at": datetime.utcnow().isoformat() + "Z"}
+                "error": str(e)[:80], "checked_at": utc_now_iso()}
 
 def monitor_loop():
     while True:
-        results = []
-        for site in SITES:
-            r = check_site(site)
-            results.append(r)
+        with lock:
+            sites_snapshot = [site.copy() for site in SITES]
+
+        results = run_checks(sites_snapshot)
         with lock:
             for r in results:
                 status_data[r["name"]] = r
-                hist = history.setdefault(r["name"], [])
-                hist.append({
-                    "status": r["status"],
-                    "latency_ms": r["latency_ms"],
-                    "checked_at": r["checked_at"],
-                })
-                # manter últimos 50 registros por site
-                if len(hist) > 50:
-                    history[r["name"]] = hist[-50:]
+                append_history_entry(r)
         time.sleep(CHECK_INTERVAL)
 
 
@@ -156,11 +197,12 @@ def api_add_site():
             return jsonify({"error": "site with this name already exists"}), 409
         SITES.append({"name": name, "url": url})
         history[name] = []
+        sites_snapshot = [site.copy() for site in SITES]
 
     # persist
     with file_lock:
         try:
-            save_sites(SITES)
+            save_sites(sites_snapshot)
         except Exception:
             pass
 
@@ -169,7 +211,7 @@ def api_add_site():
         r = check_site({"name": name, "url": url})
         with lock:
             status_data[name] = r
-            history[name].append({"status": r["status"], "latency_ms": r["latency_ms"], "checked_at": r["checked_at"]})
+            append_history_entry(r)
     except Exception:
         pass
 
@@ -203,10 +245,11 @@ def api_update_site(site_name):
                 status_data[name] = current_status
         elif site_name in status_data:
             status_data[site_name]["url"] = url
+        sites_snapshot = [site.copy() for site in SITES]
 
     with file_lock:
         try:
-            save_sites(SITES)
+            save_sites(sites_snapshot)
         except Exception:
             pass
 
@@ -215,14 +258,7 @@ def api_update_site(site_name):
         r = check_site({"name": name, "url": url})
         with lock:
             status_data[name] = r
-            hist = history.setdefault(name, [])
-            hist.append({
-                "status": r["status"],
-                "latency_ms": r["latency_ms"],
-                "checked_at": r["checked_at"],
-            })
-            if len(hist) > 50:
-                history[name] = hist[-50:]
+            append_history_entry(r)
     except Exception:
         pass
 
@@ -238,10 +274,11 @@ def api_delete_site(site_name):
         SITES.pop(idx)
         status_data.pop(site_name, None)
         history.pop(site_name, None)
+        sites_snapshot = [site.copy() for site in SITES]
 
     with file_lock:
         try:
-            save_sites(SITES)
+            save_sites(sites_snapshot)
         except Exception:
             pass
 
@@ -261,10 +298,14 @@ def index():
 @app.route("/api/status")
 def api_status():
     with lock:
-        sites = [build_site_snapshot(site) for site in SITES]
+        sites = []
+        for site in SITES:
+            snapshot = build_site_snapshot(site)
+            snapshot["history"] = list(history.get(site["name"], []))
+            sites.append(snapshot)
         total   = len(SITES)
         up      = sum(1 for s in sites if s.get("status") == "UP")
-        down    = total - up
+        down    = sum(1 for s in sites if s.get("status") == "DOWN")
         avg_lat = None
         lats = [s["latency_ms"] for s in sites if s.get("latency_ms") is not None]
         if lats:
@@ -272,13 +313,13 @@ def api_status():
         return jsonify({
             "sites": sites,
             "summary": {"total": total, "up": up, "down": down, "avg_latency_ms": avg_lat},
-            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "generated_at": utc_now_iso(),
         })
 
 @app.route("/api/history/<site_name>")
 def api_history(site_name):
     with lock:
-        hist = history.get(site_name, [])
+        hist = list(history.get(site_name, []))
         return jsonify({"site": site_name, "history": hist})
 
 if __name__ == "__main__":
