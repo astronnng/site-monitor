@@ -12,8 +12,22 @@ import requests
 import yaml
 from requests.adapters import HTTPAdapter
 from flask import Flask, jsonify, render_template, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
+
+# ── Flask Configuration ────────────────────────────────────────────────────────────
+app.config['TESTING'] = os.getenv('TESTING', '0') == '1'
+
+# ── Rate Limiting Configuration ─────────────────────────────────────────────────────
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+    enabled=not app.config['TESTING']  # Disable rate limiting in test mode
+)
 
 # ── Logging Configuration ───────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -84,6 +98,12 @@ def save_sites(sites: list):
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             yaml.safe_dump(sites, f)
+        # On Windows, os.replace() may fail if target exists, so remove it first
+        if os.path.exists(SITES_FILE):
+            try:
+                os.remove(SITES_FILE)
+            except OSError:
+                pass  # May fail due to file locks, that's ok
         os.replace(tmp_path, SITES_FILE)
         logger.info(f"Saved {len(sites)} sites to {SITES_FILE}")
     except Exception as e:
@@ -237,6 +257,7 @@ def monitor_loop():
 
 
 @app.route("/api/sites", methods=["POST"])
+@limiter.limit("10/minute")
 def api_add_site():
     data = request.get_json() or {}
     name = (data.get("name") or "").strip()
@@ -281,6 +302,7 @@ def api_add_site():
 
 
 @app.route("/api/sites/<site_name>", methods=["PUT"])
+@limiter.limit("10/minute")
 def api_update_site(site_name):
     data = request.get_json() or {}
     name = (data.get("name") or "").strip()
@@ -334,6 +356,7 @@ def api_update_site(site_name):
 
 
 @app.route("/api/sites/<site_name>", methods=["DELETE"])
+@limiter.limit("10/minute")
 def api_delete_site(site_name):
     with lock:
         idx = next((i for i, s in enumerate(SITES) if s["name"] == site_name), None)
@@ -367,6 +390,7 @@ def index():
     return render_template("index.html", check_interval=CHECK_INTERVAL)
 
 @app.route("/api/status")
+@limiter.limit("100/minute")
 def api_status():
     with lock:
         sites = []
@@ -388,10 +412,22 @@ def api_status():
         })
 
 @app.route("/api/history/<site_name>")
+@limiter.limit("100/minute")
 def api_history(site_name):
     with lock:
         hist = list(history.get(site_name, []))
         return jsonify({"site": site_name, "history": hist})
+
+
+# ── Security Headers ───────────────────────────────────────────────────────────────
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
