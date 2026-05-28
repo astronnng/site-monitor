@@ -21,6 +21,17 @@ const refreshState = {
   timerId: null,
 };
 
+// ── Error State for Persistent Display ──────────────────────────────────────────
+const errorState = {
+  lastRefreshError: null,
+  lastRefreshTime: null,
+  acknowledgeError: function(source = null) {
+    if (source === "refresh" || !source) {
+      this.lastRefreshError = null;
+    }
+  }
+};
+
 const elements = {
   loader: document.getElementById("loader"),
   sitesGrid: document.getElementById("sites-grid"),
@@ -344,6 +355,28 @@ async function fetchJson(url, options = {}) {
   return payload;
 }
 
+// ── Retry Logic with Exponential Backoff ────────────────────────────────────────
+async function fetchWithRetry(url, options = {}, maxAttempts = 3) {
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fetchJson(url, options);
+    } catch (error) {
+      lastError = error;
+      
+      if (attempt < maxAttempts) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delayMs = Math.pow(2, attempt - 1) * 1000;
+        console.warn(`Tentativa ${attempt}/${maxAttempts} falhou (${error.message}). Tentando novamente em ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  
+  throw lastError || new Error("Falha permanente após todas as tentativas");
+}
+
 function setModalFeedback(message, type = "error") {
   if (!message) {
     elements.modalFeedback.hidden = true;
@@ -479,13 +512,26 @@ async function refresh() {
   refreshState.queued = false;
 
   try {
-    const data = await fetchJson("/api/status");
+    const data = await fetchWithRetry("/api/status");
     await applySnapshot(data);
+    errorState.acknowledgeError("refresh");
+    errorState.lastRefreshTime = new Date().toLocaleTimeString("pt-BR");
   } catch (error) {
-    console.error("Erro ao atualizar:", error);
-    elements.lastUpdated.textContent = "Falha ao sincronizar";
+    console.error("Erro ao atualizar (após retentativas):", error);
+    errorState.lastRefreshError = error.message || "Falha ao sincronizar";
+    errorState.lastRefreshTime = new Date().toLocaleTimeString("pt-BR");
+    
+    // Display persistent error
+    elements.lastUpdated.textContent = "❌ Falha ao sincronizar";
     if (elements.lastUpdatedMeta) {
-      elements.lastUpdatedMeta.textContent = "Tentando novamente no proximo ciclo";
+      elements.lastUpdatedMeta.textContent = `${errorState.lastRefreshError} às ${errorState.lastRefreshTime}. Clique para limpar ou aguarde a próxima tentativa.`;
+      elements.lastUpdatedMeta.style.cursor = "pointer";
+      elements.lastUpdatedMeta.onclick = () => {
+        errorState.acknowledgeError("refresh");
+        elements.lastUpdatedMeta.textContent = "Sincronizando...";
+        elements.lastUpdatedMeta.style.cursor = "default";
+        elements.lastUpdatedMeta.onclick = null;
+      };
     }
   } finally {
     refreshState.inFlight = false;
@@ -505,13 +551,13 @@ async function handleDelete(siteName) {
 
   markCardBusy(siteName, true);
   try {
-    await fetchJson(`/api/sites/${encodeURIComponent(siteName)}`, { method: "DELETE" });
+    await fetchWithRetry(`/api/sites/${encodeURIComponent(siteName)}`, { method: "DELETE" });
     sitesByName.delete(siteName);
     delete historyCache[siteName];
     renderSites([...sitesByName.values()]);
     await refresh();
   } catch (error) {
-    alert(error.message || "Erro ao excluir site");
+    alert(`Erro ao excluir site (após retentativas): ${error.message || "Erro inesperado"}`);
     markCardBusy(siteName, false);
   }
 }
@@ -533,14 +579,14 @@ async function handleSubmit(event) {
 
   try {
     if (modalState.mode === "edit" && modalState.originalName) {
-      await fetchJson(`/api/sites/${encodeURIComponent(modalState.originalName)}`, {
+      await fetchWithRetry(`/api/sites/${encodeURIComponent(modalState.originalName)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, url }),
       });
       if (modalState.originalName !== name) delete historyCache[modalState.originalName];
     } else {
-      await fetchJson("/api/sites", {
+      await fetchWithRetry("/api/sites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, url }),
@@ -551,7 +597,7 @@ async function handleSubmit(event) {
     setModalFeedback("Painel atualizado com sucesso.", "success");
     setTimeout(closeModal, 220);
   } catch (error) {
-    setModalFeedback(error.message || "Erro ao salvar site.");
+    setModalFeedback(`${error.message || "Erro ao salvar site"} (após retentativas).`);
   } finally {
     setModalSubmitting(false);
   }
