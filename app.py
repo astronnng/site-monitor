@@ -2,6 +2,9 @@ import os
 import time
 import threading
 import tempfile
+import logging
+import re
+from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
@@ -11,6 +14,17 @@ from requests.adapters import HTTPAdapter
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
+
+# ── Logging Configuration ───────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('site-monitor.log', encoding='utf-8')
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # ── Sites a monitorar ───────────────────────────────────────────────────────────
 DEFAULT_SITES = [
@@ -28,31 +42,59 @@ DEFAULT_SITES = [
 SITES_FILE = os.getenv("SITES_FILE", "sites.yaml")
 
 
+def validate_url(url: str) -> bool:
+    """Validate URL format. Returns True if valid, False otherwise."""
+    if not url or not isinstance(url, str):
+        return False
+    try:
+        result = urlparse(url)
+        return result.scheme in ('http', 'https') and bool(result.netloc)
+    except Exception:
+        return False
+
+
+def validate_site_name(name: str) -> bool:
+    """Validate site name. Alphanumeric, hyphens, underscores, spaces. 1-100 chars."""
+    if not name or not isinstance(name, str):
+        return False
+    if not re.match(r'^[a-zA-Z0-9\s\-_]+$', name):
+        return False
+    return 1 <= len(name) <= 100
+
+
 def load_sites():
     if os.path.exists(SITES_FILE):
         try:
             with open(SITES_FILE, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or []
+                logger.info(f"Loaded {len(data)} sites from {SITES_FILE}")
                 return data
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to load sites from {SITES_FILE}: {e}", exc_info=True)
+            logger.info("Falling back to DEFAULT_SITES")
             return DEFAULT_SITES.copy()
+    logger.info(f"Sites file {SITES_FILE} not found, using DEFAULT_SITES")
     return DEFAULT_SITES.copy()
 
 
 def save_sites(sites: list):
-    # atomic write
+    """Atomically save sites to YAML file. Logs errors if operation fails."""
     target_dir = os.path.dirname(os.path.abspath(SITES_FILE)) or "."
     tmp_fd, tmp_path = tempfile.mkstemp(prefix="sites", suffix=".yaml", dir=target_dir)
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             yaml.safe_dump(sites, f)
         os.replace(tmp_path, SITES_FILE)
+        logger.info(f"Saved {len(sites)} sites to {SITES_FILE}")
+    except Exception as e:
+        logger.error(f"Failed to save sites to {SITES_FILE}: {e}", exc_info=True)
+        raise
     finally:
         if os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temp file {tmp_path}: {e}")
 
 
 SITES = load_sites()
@@ -151,36 +193,47 @@ def check_site(site: dict) -> dict:
         session = get_http_session()
         start = time.perf_counter()
         with session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True, stream=True) as response:
-            latency = round((time.perf_counter() - start) * 1000)   # ms
+            latency = round((time.perf_counter() - start) * 1000)
             status_code = response.status_code
             ok = status_code < 400
-        return {
+        result = {
             "name": name, "url": url,
             "status": "UP" if ok else "DOWN",
             "status_code": status_code,
             "latency_ms": latency,
             "checked_at": utc_now_iso(),
         }
+        logger.debug(f"Check site '{name}': {result['status']} ({status_code}) in {latency}ms")
+        return result
     except requests.exceptions.Timeout:
+        logger.warning(f"Check site '{name}': Timeout after {REQUEST_TIMEOUT}s")
         return {"name": name, "url": url, "status": "DOWN",
                 "status_code": None, "latency_ms": None,
                 "error": "Timeout", "checked_at": utc_now_iso()}
     except Exception as e:
+        logger.error(f"Check site '{name}': {type(e).__name__}: {str(e)[:80]}")
         return {"name": name, "url": url, "status": "DOWN",
                 "status_code": None, "latency_ms": None,
                 "error": str(e)[:80], "checked_at": utc_now_iso()}
 
 def monitor_loop():
-    while True:
-        with lock:
-            sites_snapshot = [site.copy() for site in SITES]
+    logger.info("Monitor loop started")
+    try:
+        while True:
+            try:
+                with lock:
+                    sites_snapshot = [site.copy() for site in SITES]
 
-        results = run_checks(sites_snapshot)
-        with lock:
-            for r in results:
-                status_data[r["name"]] = r
-                append_history_entry(r)
-        time.sleep(CHECK_INTERVAL)
+                results = run_checks(sites_snapshot)
+                with lock:
+                    for r in results:
+                        status_data[r["name"]] = r
+                        append_history_entry(r)
+            except Exception as e:
+                logger.error(f"Monitor loop iteration failed: {e}", exc_info=True)
+            time.sleep(CHECK_INTERVAL)
+    except Exception as e:
+        logger.error(f"Monitor loop crashed: {e}", exc_info=True)
 
 
 @app.route("/api/sites", methods=["POST"])
@@ -188,32 +241,41 @@ def api_add_site():
     data = request.get_json() or {}
     name = (data.get("name") or "").strip()
     url = (data.get("url") or "").strip()
-    if not name or not url:
-        return jsonify({"error": "name and url are required"}), 400
+    
+    if not validate_site_name(name):
+        logger.warning(f"Invalid site name: {name}")
+        return jsonify({"error": "Invalid name: must be 1-100 alphanumeric characters (spaces, hyphens, underscores allowed)"}), 400
+    if not validate_url(url):
+        logger.warning(f"Invalid URL: {url}")
+        return jsonify({"error": "Invalid URL: must start with http:// or https://"}), 400
 
-    # basic duplicate check
     with lock:
         if any(s["name"] == name for s in SITES):
+            logger.warning(f"Duplicate site name: {name}")
             return jsonify({"error": "site with this name already exists"}), 409
         SITES.append({"name": name, "url": url})
         history[name] = []
         sites_snapshot = [site.copy() for site in SITES]
 
-    # persist
     with file_lock:
         try:
             save_sites(sites_snapshot)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to persist new site '{name}': {e}")
+            with lock:
+                SITES.pop()
+                history.pop(name, None)
+            return jsonify({"error": "Failed to save site to disk"}), 500
 
-    # optional immediate check
+    logger.info(f"Added new site: {name} ({url})")
+
     try:
         r = check_site({"name": name, "url": url})
         with lock:
             status_data[name] = r
             append_history_entry(r)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Failed to check new site '{name}': {e}")
 
     return jsonify({"site": name, "url": url}), 201
 
@@ -223,19 +285,23 @@ def api_update_site(site_name):
     data = request.get_json() or {}
     name = (data.get("name") or "").strip()
     url = (data.get("url") or "").strip()
-    if not name or not url:
-        return jsonify({"error": "name and url are required"}), 400
+    
+    if not validate_site_name(name):
+        logger.warning(f"Invalid site name in update: {name}")
+        return jsonify({"error": "Invalid name: must be 1-100 alphanumeric characters (spaces, hyphens, underscores allowed)"}), 400
+    if not validate_url(url):
+        logger.warning(f"Invalid URL in update: {url}")
+        return jsonify({"error": "Invalid URL: must start with http:// or https://"}), 400
 
     with lock:
-        # find index
         idx = next((i for i, s in enumerate(SITES) if s["name"] == site_name), None)
         if idx is None:
+            logger.warning(f"Site not found for update: {site_name}")
             return jsonify({"error": "site not found"}), 404
-        # prevent name collision
         if name != site_name and any(s["name"] == name for s in SITES):
+            logger.warning(f"Duplicate site name in update: {name}")
             return jsonify({"error": "site with this name already exists"}), 409
         SITES[idx] = {"name": name, "url": url}
-        # move in-memory state if name changed
         if site_name != name:
             history[name] = history.pop(site_name, [])
             current_status = status_data.pop(site_name, None)
@@ -250,17 +316,19 @@ def api_update_site(site_name):
     with file_lock:
         try:
             save_sites(sites_snapshot)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to persist updated site '{site_name}': {e}")
+            return jsonify({"error": "Failed to save site to disk"}), 500
 
-    # immediate check keeps the card current after edits
+    logger.info(f"Updated site: {site_name} -> {name} ({url})")
+
     try:
         r = check_site({"name": name, "url": url})
         with lock:
             status_data[name] = r
             append_history_entry(r)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Failed to check updated site '{name}': {e}")
 
     return jsonify({"site": name, "url": url})
 
@@ -270,6 +338,7 @@ def api_delete_site(site_name):
     with lock:
         idx = next((i for i, s in enumerate(SITES) if s["name"] == site_name), None)
         if idx is None:
+            logger.warning(f"Site not found for delete: {site_name}")
             return jsonify({"error": "site not found"}), 404
         SITES.pop(idx)
         status_data.pop(site_name, None)
@@ -279,9 +348,11 @@ def api_delete_site(site_name):
     with file_lock:
         try:
             save_sites(sites_snapshot)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to persist deletion of site '{site_name}': {e}")
+            return jsonify({"error": "Failed to save changes to disk"}), 500
 
+    logger.info(f"Deleted site: {site_name}")
     return jsonify({"deleted": site_name})
 
 # ── Inicia a thread de background (pode ser desativada com a var de ambiente `START_MONITOR=0`) ──
